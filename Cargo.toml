@@ -1,0 +1,14 @@
+[package]
+name = "twig"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rusqlite = { version = "0.37.0", features = ["bundled"] }
+poise = "0.6.1"
+tokio = { version = "1.48.0", features = ["full"] }
+tracing-subscriber = "0.3.20"
+reqwest = { version = "0.12.24", features = ["json"] }
+serde_json = "1.0.145"
+serde = { version = "1.0.214", features = ["derive"] }
+snowflaked = "1.0.3"
