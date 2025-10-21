@@ -21,7 +21,7 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
     let gateway_ping = ctx.ping().await.as_millis();
 
     let embed = embed::get_embed_template(embed::EmbedStatus::Success)
-        .title("🏓 Pong!")
+        .title("🏓  Pong!")
         .fields(vec![
             ("#️⃣ Shard", &format!("{}/{}", shard_id, shard_count), true),
             ("📬 API Latency", &format!("{:.2}ms", api_latency), true),

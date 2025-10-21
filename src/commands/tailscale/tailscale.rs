@@ -14,7 +14,7 @@ pub async fn tailscale(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Join a Tailscale network
+/// Join a  Tailscale network
 #[poise::command(slash_command)]
 async fn join(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
@@ -129,7 +129,7 @@ async fn autocomplete_tags(ctx: Context<'_>, _partial: &str) -> Vec<String> {
     }
 }
 
-/// Assign a role to a Tailscale tag
+/// Assign a role to a  Tailscale tag
 #[poise::command(slash_command, guild_only = true)]
 async fn assign(
     ctx: Context<'_>,
@@ -142,7 +142,7 @@ async fn assign(
 ) -> Result<(), Error> {
     if role.id.get() == role.guild_id.get() {
         let embed = embed::get_embed_template(embed::EmbedStatus::Error)
-            .title("🛜 Tailscale role assign")
+            .title("🛜  Tailscale role assign")
             .description("You cannot assign the @everyone role.");
 
         ctx.send(CreateReply::default().embed(embed).ephemeral(true))
@@ -164,7 +164,7 @@ async fn assign(
 
     if !existing_tags.contains(&tag) {
         let embed = embed::get_embed_template(embed::EmbedStatus::Error)
-            .title("🛜 Tailscale role assign")
+            .title("🛜  Tailscale role assign")
             .description(format!("Tag `{}` does not exist.", tag));
 
         ctx.send(CreateReply::default().embed(embed).ephemeral(true))
@@ -192,7 +192,7 @@ async fn assign(
     }
 
     let embed = embed::get_embed_template(embed::EmbedStatus::Success)
-        .title("🛜 Tailscale role assign")
+        .title("🛜  Tailscale role assign")
         .description(format!(
             "Role {} has been assigned to `{}`.",
             role.mention(),
@@ -205,7 +205,7 @@ async fn assign(
     Ok(())
 }
 
-/// Unassign a role to a Tailscale tag
+/// Unassign a role to a  Tailscale tag
 #[poise::command(slash_command, guild_only = true)]
 async fn unassign(
     ctx: Context<'_>,
@@ -214,7 +214,7 @@ async fn unassign(
 ) -> Result<(), Error> {
     if role.id.get() == role.guild_id.get() {
         let embed = embed::get_embed_template(embed::EmbedStatus::Error)
-            .title("🛜 Tailscale role unassign")
+            .title("🛜  Tailscale role unassign")
             .description("You cannot unassign the @everyone role.");
 
         ctx.send(CreateReply::default().embed(embed).ephemeral(true))
@@ -237,7 +237,7 @@ async fn unassign(
 
     if !deleted_role {
         let embed = embed::get_embed_template(embed::EmbedStatus::Error)
-            .title("🛜 Tailscale role unassign")
+            .title("🛜  Tailscale role unassign")
             .description(format!("Role {} was not assigned.", role.mention()));
 
         ctx.send(CreateReply::default().embed(embed).ephemeral(true))
@@ -247,7 +247,7 @@ async fn unassign(
     }
 
     let embed = embed::get_embed_template(embed::EmbedStatus::Success)
-        .title("🛜 Tailscale role unassign")
+        .title("🛜  Tailscale role unassign")
         .description(format!("Role {} has been unassigned.", role.mention()));
 
     ctx.send(CreateReply::default().embed(embed).ephemeral(true))
@@ -262,7 +262,7 @@ async fn list(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
 
     let mut embed =
-        embed::get_embed_template(embed::EmbedStatus::Success).title("🛜 Tailscale role list");
+        embed::get_embed_template(embed::EmbedStatus::Success).title("🛜  Tailscale role list");
 
     if let Ok(db) = ctx.data().db.lock() {
         let mut stmt = db
