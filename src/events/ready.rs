@@ -1,6 +1,5 @@
 use crate::{Data, Error};
 use poise::serenity_prelude::{self as serenity, ActivityData};
-use serde_json::json;
 
 /// Handles when a member leaves or is removed from a guild
 pub async fn handle(
