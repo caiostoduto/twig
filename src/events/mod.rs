@@ -1,7 +1,7 @@
-pub mod guild_member_removal;
+pub mod ready;
 
 use crate::{Data, Error};
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity};
 
 /// Main event handler that routes events to specific handlers
 pub async fn event_handler(
@@ -11,8 +11,8 @@ pub async fn event_handler(
     data: &Data,
 ) -> Result<(), Error> {
     match event {
-        serenity::FullEvent::GuildMemberRemoval { guild_id, user, .. } => {
-            guild_member_removal::handle(ctx, guild_id, user, data).await?;
+        serenity::FullEvent::Ready { data_about_bot } => {
+            ready::handle(ctx, data_about_bot, data).await?;
         }
         _ => {}
     }

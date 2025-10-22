@@ -15,10 +15,15 @@ pub fn get_embed_template(status: EmbedStatus) -> CreateEmbed {
 
     CreateEmbed::new()
         .color(Color::new(0x632434))
-        .footer(CreateEmbedFooter::new(if config::is_debug() {
-            format!("{}  •  develop", status_emoji)
-        } else {
-            format!("{}  •  {}", status_emoji, &config::get_config().commit_hash)
-        }))
+        .footer(CreateEmbedFooter::new(format!(
+            "{}  •  {} @ {}",
+            status_emoji,
+            if config::is_debug() {
+                "🛠️"
+            } else {
+                &config::get_config().commit_hash
+            },
+            &config::get_config().commit_branch
+        )))
         .timestamp(Timestamp::now())
 }

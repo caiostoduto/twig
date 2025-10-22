@@ -1,6 +1,7 @@
 use poise::serenity_prelude::{self as serenity};
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
+use tracing::{error, info};
 
 mod commands;
 mod events;
@@ -23,11 +24,11 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     match error {
         poise::FrameworkError::Setup { error, .. } => panic!("Failed to start bot: {:?}", error),
         poise::FrameworkError::Command { error, ctx, .. } => {
-            println!("Error in command `{}`: {:?}", ctx.command().name, error,);
+            error!("Error in command `{}`: {:?}", ctx.command().name, error);
         }
         error => {
             if let Err(e) = poise::builtins::on_error(error).await {
-                println!("Error while handling error: {}", e)
+                error!("Error while handling error: {}", e)
             }
         }
     }
@@ -49,13 +50,13 @@ pub async fn start() {
         // This code is run before every command
         pre_command: |ctx| {
             Box::pin(async move {
-                println!("Executing command {}...", ctx.command().qualified_name);
+                info!("Executing command {}...", ctx.command().qualified_name);
             })
         },
         // This code is run after a command if it was successful (returned Ok)
         post_command: |ctx| {
             Box::pin(async move {
-                println!("Executed command {}!", ctx.command().qualified_name);
+                info!("Executed command {}!", ctx.command().qualified_name);
             })
         },
         // Enforce command checks even for owners (enforced by default)
@@ -70,13 +71,13 @@ pub async fn start() {
     let framework = poise::Framework::builder()
         .setup(move |ctx, _ready, framework| {
             Box::pin(async move {
-                println!("Logged in as {}", _ready.user.name);
+                info!("Logged in as {}", _ready.user.name);
 
                 // Initialize database
                 let conn = utils::db::connect().expect("Failed to connect to database");
                 utils::db::initialize_db(&conn).expect("Failed to initialize database");
 
-                println!("Database initialized successfully");
+                info!("Database initialized successfully");
 
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 Ok(Data {

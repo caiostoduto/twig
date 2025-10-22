@@ -14,6 +14,7 @@ pub struct Config {
     pub tailscale_tag: String,
 
     pub commit_hash: String,
+    pub commit_branch: String,
 }
 
 pub fn is_debug() -> bool {
@@ -42,7 +43,8 @@ impl Config {
             tailscale_tag: env::var("TAILSCALE_TAG")
                 .expect("Environment variable `TAILSCALE_TAG` not set"),
 
-            commit_hash: env::var("COMMIT_HASH").unwrap_or("".to_string()),
+            commit_hash: env!("VERGEN_GIT_SHA").to_string(),
+            commit_branch: env!("VERGEN_GIT_BRANCH").to_string(),
         }
     }
 }
