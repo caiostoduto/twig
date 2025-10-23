@@ -7,7 +7,8 @@ pub fn connect() -> Result<Connection> {
 }
 
 pub fn initialize_db(conn: &Connection) -> Result<()> {
-    let schema = fs::read_to_string("resources/schema.sql").expect("Failed to read schema file");
+    let schema =
+        fs::read_to_string("migrations/initial_migration.sql").expect("Failed to read schema file");
 
     conn.execute_batch(&schema)?;
     Ok(())

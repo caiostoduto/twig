@@ -16,9 +16,4 @@ snowflaked = "1.0.3"
 tracing = "0.1.41"
 
 [build-dependencies]
-vergen-gitcl = { version = "1.0.8", features = [
-  "build",
-  "cargo",
-  "rustc",
-  "si",
-] }
+vergen-gitcl = { version = "1.0.8" }
