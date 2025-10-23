@@ -1,4 +1,3 @@
-cat Dockerfile 
 FROM lukemathwalker/cargo-chef:latest-rust-latest AS chef
 WORKDIR /app
 
@@ -19,4 +18,7 @@ RUN cargo build --release --bin twig
 FROM debian:stable-slim AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/twig /usr/local/bin
+
+ENV DATABASE_URL=sqlite:/data/twig.sqlite
+VOLUME [ "/data" ]
 ENTRYPOINT ["/usr/local/bin/twig"]
