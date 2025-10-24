@@ -1,9 +1,9 @@
-pub mod misc;
 pub mod tailscale;
+pub mod utilitary;
 
 use crate::{Data, Error};
 
 /// Returns all bot commands
 pub fn commands() -> Vec<poise::Command<Data, Error>> {
-    vec![misc::ping::ping(), tailscale::tailscale::tailscale()]
+    vec![utilitary::ping(), tailscale::tailscale()]
 }
