@@ -1,25 +1,36 @@
 use poise::CreateReply;
+use reqwest::Client;
 use tokio::time::Instant;
 
-use crate::{Context, Error, utils::embed};
+use crate::{
+    Context, Error,
+    utils::{config, embed},
+};
 
 /// Check the bot's latency and connection status
 #[poise::command(slash_command, category = "Utilitary")]
 pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
-    // Measure the time taken to defer the response
-    let api_latency = get_latency_api(&ctx).await?;
-    // Gather shard information
-    let (shard_id, shard_count) = get_shard_info(&ctx).await;
-    // Get gateway ping
-    let gateway_ping = ctx.ping().await.as_millis();
+    // Gather latencies concurrently
+    let (tailscale_latency, discord_latency, gateway_ping) =
+        tokio::join!(get_tailscale_latency(), get_discord_latency(&ctx), async {
+            ctx.ping().await.as_millis()
+        });
 
     // Create embed response
     let embed = embed::get_embed_template(embed::EmbedStatus::Success)
         .title("🏓  Pong!")
         .fields(vec![
-            ("#️⃣ Shard", &format!("{}/{}", shard_id, shard_count), true),
-            ("📬 API Latency", &format!("{:.2}ms", api_latency), true),
-            ("⛩️ Gateway", &format!("{:.2}ms", gateway_ping), true),
+            (
+                "<:discord:1431369538766897334> Discord (defer)",
+                &format!("{:.2}ms", discord_latency),
+                false,
+            ),
+            ("⛩️ Gateway", &format!("{:.2}ms", gateway_ping), false),
+            (
+                "<:tailscale:1431362623194267809> Tailscale",
+                &format!("{:.2}ms", tailscale_latency),
+                false,
+            ),
         ]);
 
     // Send the response
@@ -29,17 +40,13 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Measure the time taken to defer the response
-async fn get_latency_api(ctx: &Context<'_>) -> Result<u64, Error> {
-    let start = Instant::now();
-    ctx.defer_ephemeral().await?;
-    let duration = start.elapsed();
-
-    Ok(duration.as_millis() as u64)
+pub struct ShardInfo {
+    shard_id: u32,
+    shard_count: usize,
 }
 
 /// Gather shard information
-async fn get_shard_info(ctx: &Context<'_>) -> (u32, usize) {
+pub async fn get_shard_info(ctx: &Context<'_>) -> ShardInfo {
     let shard_id = ctx.serenity_context().shard_id.get() + 1;
     let shard_count = ctx
         .framework()
@@ -48,5 +55,28 @@ async fn get_shard_info(ctx: &Context<'_>) -> (u32, usize) {
         .await
         .len();
 
-    (shard_id, shard_count)
+    ShardInfo {
+        shard_id,
+        shard_count,
+    }
+}
+
+/// Measure the time taken to defer the response
+pub async fn get_discord_latency(ctx: &Context<'_>) -> u128 {
+    let start = Instant::now();
+    ctx.defer_ephemeral().await.ok();
+    let duration = start.elapsed();
+
+    duration.as_millis()
+}
+
+pub async fn get_tailscale_latency() -> u128 {
+    let client = Client::new();
+    let url = config::get_config().tailscale_api_base.to_owned() + "/ping";
+
+    let start = Instant::now();
+    let _ = client.get(url).send().await;
+    let duration = start.elapsed();
+
+    duration.as_millis()
 }
