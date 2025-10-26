@@ -18,6 +18,7 @@ RUN cargo build --release --bin twig
 FROM debian:stable-slim AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/twig /usr/local/bin
+COPY migrations ./migrations
 
 # Set environment variables
 ENV DATABASE_URL=sqlite:/data/twig.sqlite
