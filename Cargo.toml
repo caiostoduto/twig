@@ -15,6 +15,7 @@ serde = { version = "1.0.214", features = ["derive"] }
 snowflaked = "1.0.3"
 tracing = "0.1.41"
 dotenvy = { git = "https://github.com/allan2/dotenvy", features = ["macros"] }
+sysinfo = "0.37.2"
 
 [build-dependencies]
 vergen-gitcl = { version = "1.0.8" }

@@ -19,6 +19,9 @@ FROM debian:stable-slim AS runtime
 WORKDIR /app
 COPY --from=builder /app/target/release/twig /usr/local/bin
 
+# Set environment variables
 ENV DATABASE_URL=sqlite:/data/twig.sqlite
+ENV DOCKER_SOCKET=/var/run/docker.sock
+
 VOLUME [ "/data" ]
 ENTRYPOINT ["/usr/local/bin/twig"]
