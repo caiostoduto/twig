@@ -1,8 +1,21 @@
-mod tailscale;
+mod join;
+mod role;
 
-use crate::{Data, Error, utils::config};
+use crate::{Context, Data, Error, utils::config};
 
-use tailscale::*;
+use join::*;
+use role::*;
+
+/// Tailscale command group
+#[poise::command(
+    slash_command,
+    subcommands("join", "role"),
+    subcommand_required = true,
+    category = "Tailscale"
+)]
+pub async fn tailscale(_ctx: Context<'_>) -> Result<(), Error> {
+    Ok(())
+}
 
 /// Returns all bot commands related to Tailscale category
 pub fn commands() -> Vec<poise::Command<Data, Error>> {
