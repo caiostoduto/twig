@@ -353,7 +353,7 @@ async fn fetch_tags_from_tailscale_api(ctx: &Context<'_>) -> Vec<String> {
                 .filter_map(|(key, owners)| {
                     let includes = owners.as_array().map_or(false, |arr| {
                         arr.iter()
-                            .any(|s| s.as_str() == Some(&config::get_config().tailscale_tag))
+                            .any(|s| s.as_str() == config::get_config().tailscale_tag.as_deref())
                     });
 
                     if includes { Some(key.clone()) } else { None }

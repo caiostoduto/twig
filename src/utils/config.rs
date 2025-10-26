@@ -11,9 +11,9 @@ pub struct Config {
 
     // Tailscale
     pub tailscale_api_base: &'static str,
-    pub tailscale_client_id: String,
-    pub tailscale_client_secret: String,
-    pub tailscale_tag: String,
+    pub tailscale_client_id: Option<String>,
+    pub tailscale_client_secret: Option<String>,
+    pub tailscale_tag: Option<String>,
 
     // Git info (set at build time)
     pub commit_hash: &'static str,
@@ -37,7 +37,7 @@ impl Config {
             discord_token: env::var("DISCORD_TOKEN")
                 .expect("Environment variable `DISCORD_TOKEN` not set"),
             discord_owners_ids: env::var("DISCORD_OWNER_ID")
-                .expect("Environment variable `DISCORD_OWNER_ID` not set")
+                .unwrap_or("".to_string())
                 .split(',')
                 .map(|id| {
                     id.parse()
@@ -47,12 +47,9 @@ impl Config {
 
             // Tailscale
             tailscale_api_base: "https://api.tailscale.com/api/v2",
-            tailscale_client_id: env::var("TAILSCALE_CLIENT_ID")
-                .expect("Environment variable `TAILSCALE_CLIENT_ID` not set"),
-            tailscale_client_secret: env::var("TAILSCALE_CLIENT_SECRET")
-                .expect("Environment variable `TAILSCALE_CLIENT_SECRET` not set"),
-            tailscale_tag: env::var("TAILSCALE_TAG")
-                .expect("Environment variable `TAILSCALE_TAG` not set"),
+            tailscale_client_id: env::var("TAILSCALE_CLIENT_ID").ok(),
+            tailscale_client_secret: env::var("TAILSCALE_CLIENT_SECRET").ok(),
+            tailscale_tag: env::var("TAILSCALE_TAG").ok(),
 
             // Git info
             commit_hash: env!("VERGEN_GIT_SHA"),
