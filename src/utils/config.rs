@@ -24,6 +24,12 @@ pub struct Config {
 
     // Runtime info
     pub start_time: std::time::Instant,
+
+    // InfluxDB
+    pub influxdb_url: Option<String>,
+    pub influxdb_org: Option<String>,
+    pub influxdb_bucket: Option<String>,
+    pub influxdb_token: Option<String>,
 }
 
 pub fn is_debug() -> bool {
@@ -63,6 +69,12 @@ impl Config {
 
             // Runtime info
             start_time: std::time::Instant::now(),
+
+            // InfluxDB
+            influxdb_url: env::var("INFLUXDB_URL").ok(),
+            influxdb_org: env::var("INFLUXDB_ORG").ok(),
+            influxdb_bucket: env::var("INFLUXDB_BUCKET").ok(),
+            influxdb_token: env::var("INFLUXDB_TOKEN").ok(),
         }
     }
 }

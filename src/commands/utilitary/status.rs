@@ -1,13 +1,10 @@
-// VPN status
-
 use crate::{
     Context, Error,
-    utils::{config, embed},
+    utils::{config, docker, embed},
 };
 
 use poise::CreateReply;
-use reqwest::Client;
-use std::{path::Path, time::Duration};
+use std::time::Duration;
 use sysinfo::System;
 
 /// Display the bot's current status
@@ -111,14 +108,11 @@ async fn get_tailscale_status() -> String {
 
 async fn get_docker_status() -> String {
     // Check if Docker socket is configured
-    if let Some(docker_socket) = &config::get_config().docker_socket {
+    if config::get_config().docker_socket.is_some() {
         // Create a client to connect to the Docker socket
-        let client = Client::builder()
-            .unix_socket(Path::new(docker_socket))
-            .build()
-            .unwrap();
+        let client = docker::DockerClient::new();
 
-        match client.get("http://localhost/_ping").send().await {
+        match client.ping().await {
             Ok(response) => {
                 if response.status().is_success() {
                     return "Running".to_string();
