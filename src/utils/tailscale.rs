@@ -1,4 +1,3 @@
-use poise::serenity_prelude::client;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
