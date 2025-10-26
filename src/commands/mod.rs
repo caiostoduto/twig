@@ -5,9 +5,10 @@ use crate::{Data, Error};
 
 /// Returns all bot commands
 pub fn commands() -> Vec<poise::Command<Data, Error>> {
-    vec![
-        utilitary::ping(),
-        utilitary::status(),
-        tailscale::tailscale(),
-    ]
+    let mut commands = Vec::new();
+
+    commands.extend(utilitary::commands());
+    commands.extend(tailscale::commands());
+
+    commands
 }

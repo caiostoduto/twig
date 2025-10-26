@@ -1,5 +1,11 @@
-pub mod ping;
-pub mod status;
+mod ping;
+mod status;
 
-pub use ping::*;
-pub use status::*;
+use crate::{Data, Error};
+
+use ping::*;
+use status::*;
+
+pub fn commands() -> Vec<poise::Command<Data, Error>> {
+    vec![ping(), status()]
+}
