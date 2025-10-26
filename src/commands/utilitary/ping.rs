@@ -20,16 +20,16 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
     let embed = embed::get_embed_template(embed::EmbedStatus::Success)
         .title("🏓  Pong!")
         .fields(vec![
+            ("⛩️ Gateway", &format!("{:.2}ms", gateway_ping), true),
             (
                 "<:discord:1431369538766897334> Discord (defer)",
                 &format!("{:.2}ms", discord_latency),
-                false,
+                true,
             ),
-            ("⛩️ Gateway", &format!("{:.2}ms", gateway_ping), false),
             (
-                "<:tailscale:1431362623194267809> Tailscale",
+                "<:tailscale:1431362623194267809> Tailscale (http)",
                 &format!("{:.2}ms", tailscale_latency),
-                false,
+                true,
             ),
         ]);
 
@@ -38,27 +38,6 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
         .await?;
 
     Ok(())
-}
-
-pub struct ShardInfo {
-    shard_id: u32,
-    shard_count: usize,
-}
-
-/// Gather shard information
-pub async fn get_shard_info(ctx: &Context<'_>) -> ShardInfo {
-    let shard_id = ctx.serenity_context().shard_id.get() + 1;
-    let shard_count = ctx
-        .framework()
-        .shard_manager()
-        .shards_instantiated()
-        .await
-        .len();
-
-    ShardInfo {
-        shard_id,
-        shard_count,
-    }
 }
 
 /// Measure the time taken to defer the response
