@@ -7,6 +7,9 @@ use crate::{
     utils::{config, embed},
 };
 
+/// API endpoint for Tailscale ping check
+const TAILSCALE_PING_ENDPOINT: &str = "/ping";
+
 /// Check the bot's latency and connection status
 #[poise::command(slash_command, category = "Utilitary")]
 pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
@@ -44,18 +47,15 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
 pub async fn get_discord_latency(ctx: &Context<'_>) -> u128 {
     let start = Instant::now();
     ctx.defer_ephemeral().await.ok();
-    let duration = start.elapsed();
-
-    duration.as_millis()
+    start.elapsed().as_millis()
 }
 
+/// Measures latency to Tailscale API
 pub async fn get_tailscale_latency() -> u128 {
     let client = Client::new();
-    let url = config::get_config().tailscale_api_base.to_owned() + "/ping";
+    let url = format!("{}{}", config::get_config().tailscale_api_base, TAILSCALE_PING_ENDPOINT);
 
     let start = Instant::now();
     let _ = client.get(url).send().await;
-    let duration = start.elapsed();
-
-    duration.as_millis()
+    start.elapsed().as_millis()
 }

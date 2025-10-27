@@ -3,6 +3,7 @@ use std::sync::OnceLock;
 
 use poise::serenity_prelude::UserId;
 
+/// Application configuration loaded from environment variables
 #[derive(Debug)]
 pub struct Config {
     // Discord
@@ -32,11 +33,13 @@ pub struct Config {
     pub influxdb_token: Option<String>,
 }
 
+/// Returns whether the application is running in debug mode
 pub fn is_debug() -> bool {
     cfg!(debug_assertions)
 }
 
 impl Config {
+    /// Loads configuration from environment variables
     fn from_env() -> Self {
         Self {
             // Discord
@@ -63,10 +66,10 @@ impl Config {
             commit_branch: env!("VERGEN_GIT_BRANCH"),
 
             // Docker
-            docker_socket: match env::var("DOCKER_SOCKET").ok() {
-                Some(val) => Some(val.strip_prefix("unix://").unwrap_or(&val).to_string()),
-                _ => None,
-            },
+            // Strip the "unix://" prefix from DOCKER_SOCKET if present, as socket paths are typically just the filesystem path
+            docker_socket: env::var("DOCKER_SOCKET")
+                .ok()
+                .map(|val| val.strip_prefix("unix://").unwrap_or(&val).to_string()),
 
             // Runtime info
             start_time: std::time::Instant::now(),
@@ -83,6 +86,10 @@ impl Config {
 // A global, thread-safe, one-time initialized config
 pub static CONFIG: OnceLock<Config> = OnceLock::new();
 
+/// Returns a reference to the global configuration instance
+///
+/// This function initializes the configuration on first call and returns
+/// a cached reference on subsequent calls.
 pub fn get_config() -> &'static Config {
     CONFIG.get_or_init(Config::from_env)
 }

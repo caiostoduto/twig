@@ -11,12 +11,15 @@ mod utils;
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
-// Custom user data passed to all command functions
+/// Custom user data passed to all command functions
 pub struct Data {
+    /// Shared database connection
     pub db: Arc<Mutex<Connection>>,
+    /// Tailscale API client
     pub tailscale_client: Arc<utils::tailscale::TailscaleClient>,
 }
 
+/// Custom error handler for the bot framework
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     // This is our custom error handler
     // They are many errors that can occur, so we only handle the ones we want to customize
@@ -34,6 +37,7 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     }
 }
 
+/// Starts and runs the Discord bot
 pub async fn start() {
     // FrameworkOptions contains all of poise's configuration option in one struct
     // Every option can be omitted to use its default value
@@ -75,7 +79,8 @@ pub async fn start() {
 
                 // Initialize database
                 let conn = utils::db::connect().expect("Failed to connect to database");
-                utils::db::initialize_db(&conn).expect("Failed to initialize database");
+                utils::db::initialize_db(&conn)
+                    .map_err(|e| format!("Failed to initialize database: {}", e))?;
 
                 info!("Database initialized successfully");
 

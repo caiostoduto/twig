@@ -6,16 +6,23 @@ use tokio::sync::Mutex;
 
 use crate::utils::config;
 
+/// Token refresh buffer time in seconds (5 minutes)
+const TOKEN_REFRESH_BUFFER_SECS: u64 = 300;
+
 #[derive(Debug, Clone, Deserialize)]
 struct AccessToken {
     access_token: String,
     expires_in: u64, // in seconds
 }
 
+/// Errors that can occur when interacting with the Tailscale API
 #[derive(Debug)]
 pub enum TailscaleError {
+    /// HTTP request failed
     Request(reqwest::Error),
+    /// API returned an error status code with response body
     Api(u16, String),
+    /// Failed to parse JSON response
     Json(serde_json::Error),
 }
 
@@ -26,7 +33,7 @@ impl std::fmt::Display for TailscaleError {
             TailscaleError::Api(code, body) => {
                 write!(f, "Tailscale API error (status {}): {}", code, body)
             }
-            TailscaleError::Json(err) => write!(f, "JSON error: {}", err),
+            TailscaleError::Json(err) => write!(f, "JSON parsing error: {}", err),
         }
     }
 }
@@ -45,6 +52,7 @@ impl From<serde_json::Error> for TailscaleError {
     }
 }
 
+/// Client for interacting with the Tailscale API
 pub struct TailscaleClient {
     http: Client,
     // (token, obtained_at)
@@ -52,13 +60,12 @@ pub struct TailscaleClient {
 }
 
 impl TailscaleClient {
+    /// Creates a new Tailscale API client
     pub fn new() -> Self {
-        Self {
-            http: Client::new(),
-            access_token: Mutex::new(None),
-        }
+        Self::default()
     }
 
+    /// Renews the OAuth access token if it's expired or about to expire
     async fn renew(&self) -> Result<(), TailscaleError> {
         // First, check if existing token is still valid without holding the lock across awaits
         let needs_refresh = {
@@ -66,7 +73,7 @@ impl TailscaleClient {
             if let Some((token, obtained_at)) = token_guard.as_ref() {
                 let age = obtained_at.elapsed();
                 let ttl = Duration::from_secs(token.expires_in);
-                age >= ttl.saturating_sub(Duration::from_secs(300))
+                age >= ttl.saturating_sub(Duration::from_secs(TOKEN_REFRESH_BUFFER_SECS))
             } else {
                 true
             }
@@ -109,6 +116,7 @@ impl TailscaleClient {
         Ok(())
     }
 
+    /// Fetches JSON data from a Tailscale API endpoint
     async fn get_json(&self, endpoint: &str) -> Result<Value, TailscaleError> {
         self.renew().await?;
 
@@ -159,7 +167,17 @@ impl TailscaleClient {
         Ok(serde_json::from_str(&text)?)
     }
 
+    /// Fetches the Tailscale ACL policy file
     pub async fn get_policy_file(&self) -> Result<Value, TailscaleError> {
         self.get_json("acl").await
+    }
+}
+
+impl Default for TailscaleClient {
+    fn default() -> Self {
+        Self {
+            http: Client::new(),
+            access_token: Mutex::new(None),
+        }
     }
 }

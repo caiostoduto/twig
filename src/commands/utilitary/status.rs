@@ -7,6 +7,17 @@ use poise::CreateReply;
 use std::time::Duration;
 use sysinfo::System;
 
+/// Time constants for uptime formatting
+const SECS_PER_WEEK: u64 = 604800;
+const SECS_PER_DAY: u64 = 86400;
+const SECS_PER_HOUR: u64 = 3600;
+const SECS_PER_MINUTE: u64 = 60;
+
+/// Tailscale local API endpoint timeout in milliseconds
+const TAILSCALE_TIMEOUT_MS: u64 = 200;
+/// Tailscale local IP address
+const TAILSCALE_LOCAL_IP: &str = "http://100.100.100.100";
+
 /// Display the bot's current status
 #[poise::command(slash_command, category = "Utilitary")]
 pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
@@ -47,14 +58,7 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
             ),
             (
                 "🕒 Uptime",
-                &format!(
-                    "{}w {}d {}h {}m {}s",
-                    config::get_config().start_time.elapsed().as_secs() / 604800,
-                    (config::get_config().start_time.elapsed().as_secs() % 604800) / 86400,
-                    (config::get_config().start_time.elapsed().as_secs() % 86400) / 3600,
-                    (config::get_config().start_time.elapsed().as_secs() % 3600) / 60,
-                    config::get_config().start_time.elapsed().as_secs() % 60
-                ),
+                &format_uptime(config::get_config().start_time.elapsed().as_secs()),
                 true,
             ),
             ("⏱️ CPU Usage", &format!("{:.2}%", cpu_usage), true),
@@ -84,17 +88,35 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+/// Formats uptime in seconds to a human-readable string
+///
+/// # Arguments
+/// * `total_secs` - Total uptime in seconds
+///
+/// # Returns
+/// A formatted string in the format "Xw Xd Xh Xm Xs"
+fn format_uptime(total_secs: u64) -> String {
+    let weeks = total_secs / SECS_PER_WEEK;
+    let days = (total_secs % SECS_PER_WEEK) / SECS_PER_DAY;
+    let hours = (total_secs % SECS_PER_DAY) / SECS_PER_HOUR;
+    let minutes = (total_secs % SECS_PER_HOUR) / SECS_PER_MINUTE;
+    let seconds = total_secs % SECS_PER_MINUTE;
+
+    format!("{}w {}d {}h {}m {}s", weeks, days, hours, minutes, seconds)
+}
+
 /// Check Tailscale status
 async fn get_tailscale_status() -> String {
     // Try to reach the Tailscale local IP
-    match reqwest::Client::builder()
-        .timeout(Duration::from_millis(200))
+    let client = match reqwest::Client::builder()
+        .timeout(Duration::from_millis(TAILSCALE_TIMEOUT_MS))
         .build()
-        .unwrap()
-        .get("http://100.100.100.100")
-        .send()
-        .await
     {
+        Ok(c) => c,
+        Err(_) => return "Error building client".to_string(),
+    };
+
+    match client.get(TAILSCALE_LOCAL_IP).send().await {
         Ok(response) => {
             if response.status().is_success() {
                 "Running".to_string()
@@ -106,26 +128,19 @@ async fn get_tailscale_status() -> String {
     }
 }
 
+/// Check Docker status
 async fn get_docker_status() -> String {
     // Check if Docker socket is configured
-    if config::get_config().docker_socket.is_some() {
-        // Create a client to connect to the Docker socket
-        let client = docker::DockerClient::new();
-
-        match client.ping().await {
-            Ok(response) => {
-                if response.status().is_success() {
-                    return "Running".to_string();
-                } else {
-                    return "Not running".to_string();
-                }
-            }
-            Err(_) => {
-                return "Not running".to_string();
-            }
-        }
-    } else {
+    let Some(_) = config::get_config().docker_socket.as_ref() else {
         return "Not configured".to_string();
+    };
+
+    // Create a client to connect to the Docker socket
+    let client = docker::DockerClient::new();
+
+    match client.ping().await {
+        Ok(response) if response.status().is_success() => "Running".to_string(),
+        _ => "Not running".to_string(),
     }
 }
 
