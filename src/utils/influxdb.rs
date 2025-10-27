@@ -48,7 +48,7 @@ impl InfluxDB {
             .body(query.to_string())
             .send()
             .await
-            .unwrap();
+            ?;
 
         let text = res.text().await?;
         // println!("Response Text:\n{}", text);
