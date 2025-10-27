@@ -121,7 +121,7 @@ async fn get_docker_status() -> String {
                 }
             }
             Err(_) => {
-                return "Not configured".to_string();
+                return "Not running".to_string();
             }
         }
     } else {
