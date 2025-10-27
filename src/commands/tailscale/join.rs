@@ -2,7 +2,7 @@ use snowflaked::Generator;
 
 use crate::{Context, Error};
 
-/// Join a  Tailscale network
+/// Join a Tailscale network
 #[poise::command(slash_command)]
 pub async fn join(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
