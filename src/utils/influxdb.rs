@@ -1,4 +1,5 @@
-use reqwest::{header, Client};
+use reqwest::{Client, header};
+use tracing::debug;
 
 use crate::utils::config;
 
@@ -65,7 +66,7 @@ impl InfluxDB {
             .await?;
 
         let text = res.text().await?;
-        // println!("Response Text:\n{}", text);
+        debug!("InfluxDB response:\n`{}`", text);
 
         let mut lines: Vec<Vec<String>> = text
             .lines()

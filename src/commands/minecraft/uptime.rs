@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use poise::CreateReply;
+use tracing::debug;
 
 use crate::{
     Context, Error,
@@ -97,6 +98,8 @@ async fn get_minecraft_servers_uptime() -> HashMap<String, MinecraftUptime> {
         let sum: f64 = uptime.values.iter().sum();
         uptime.mean = sum / (uptime.values.len() as f64);
     }
+
+    debug!("Minecraft uptimes: {:?}", uptimes);
 
     uptimes
 }

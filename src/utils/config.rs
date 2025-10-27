@@ -2,6 +2,7 @@ use std::env;
 use std::sync::OnceLock;
 
 use poise::serenity_prelude::UserId;
+use tracing::{debug, info};
 
 /// Application configuration loaded from environment variables
 #[derive(Debug)]
@@ -41,7 +42,9 @@ pub fn is_debug() -> bool {
 impl Config {
     /// Loads configuration from environment variables
     fn from_env() -> Self {
-        Self {
+        info!("[from_env] Loading configuration from environment variables");
+
+        let config = Self {
             // Discord
             discord_token: env::var("DISCORD_TOKEN")
                 .expect("Environment variable `DISCORD_TOKEN` not set"),
@@ -79,7 +82,11 @@ impl Config {
             influxdb_org: env::var("INFLUXDB_ORG").ok(),
             influxdb_bucket: env::var("INFLUXDB_BUCKET").ok(),
             influxdb_token: env::var("INFLUXDB_TOKEN").ok(),
-        }
+        };
+
+        debug!("[from_env] Loaded configuration: {:?}", config);
+
+        config
     }
 }
 

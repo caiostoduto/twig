@@ -3,6 +3,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
+use tracing::debug;
 
 use crate::utils::config;
 
@@ -164,7 +165,10 @@ impl TailscaleClient {
             .replace(",}", "}");
 
         // Try to parse as JSON
-        Ok(serde_json::from_str(&text)?)
+        let json: Value = serde_json::from_str(&text)?;
+        debug!("[get_json] Tailscale API response JSON: {}", json);
+
+        Ok(json)
     }
 
     /// Fetches the Tailscale ACL policy file

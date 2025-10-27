@@ -5,6 +5,7 @@ use crate::{Context, Data, Error, utils::config};
 
 use join::*;
 use role::*;
+use tracing::info;
 
 /// Tailscale command group
 #[poise::command(
@@ -28,8 +29,14 @@ pub fn commands() -> Vec<poise::Command<Data, Error>> {
     .iter()
     .all(|f| f.is_some())
     {
+        info!(
+            "[commands::tailscale::commands] Tailscale config detected, enabling Tailscale commands"
+        );
         vec![tailscale()]
     } else {
+        info!(
+            "[commands::tailscale::commands] Tailscale config not detected, skipping Tailscale commands"
+        );
         vec![]
     }
 }

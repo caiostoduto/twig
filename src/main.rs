@@ -1,7 +1,7 @@
 use poise::serenity_prelude::{self as serenity};
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 mod commands;
 mod events;
@@ -39,15 +39,22 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
 
 /// Starts and runs the Discord bot
 pub async fn start() {
+    info!("[start] Starting Twig bot");
+
     // FrameworkOptions contains all of poise's configuration option in one struct
     // Every option can be omitted to use its default value
     let options = poise::FrameworkOptions {
         commands: commands::commands(),
         // Set bot owners who have special permissions
         owners: {
-            std::collections::HashSet::from_iter(
+            let owners = std::collections::HashSet::from_iter(
                 utils::config::get_config().discord_owners_ids.clone(),
-            )
+            );
+
+            info!("[start] Bot owners count: {}", owners.len());
+            debug!("[start] Bot owners IDs: {:?}", owners);
+
+            owners
         },
         // The global error handler for all error cases that may occur
         on_error: |error| Box::pin(on_error(error)),
@@ -100,6 +107,11 @@ pub async fn start() {
 
                 info!("[framework::setup] Database initialized successfully");
 
+                info!(
+                    "[framework::setup] Registering ({}) global commands",
+                    framework.options().commands.len()
+                );
+
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 Ok(Data {
                     db: Arc::new(Mutex::new(conn)),
@@ -118,6 +130,7 @@ pub async fn start() {
         .framework(framework)
         .await;
 
+    info!("[start] Starting autosharded client");
     client.unwrap().start_autosharded().await.unwrap();
 }
 
