@@ -74,7 +74,10 @@ async fn get_minecraft_servers_uptime() -> HashMap<String, MinecraftUptime> {
         |> aggregateWindow(every: 30m, fn: mean, createEmpty: true)
         |> fill(column: \"_value\", value: 0.0)
         |> keep(columns: [\"_value\", \"host\"])",
-            config::get_config().influxdb_bucket.as_deref().expect("INFLUXDB_BUCKET environment variable must be set")
+            config::get_config()
+                .influxdb_bucket
+                .as_deref()
+                .expect("INFLUXDB_BUCKET environment variable must be set")
         ))
         .await
         .unwrap()
@@ -86,10 +89,9 @@ async fn get_minecraft_servers_uptime() -> HashMap<String, MinecraftUptime> {
                 values: Vec::new(),
                 mean: 0.0,
             })
-            .values;
-        if let Ok(val) = uptime[4].parse::<f64>() {
-            values.push(val);
-        }
+            .values
+            .push(uptime[4].parse::<f64>().unwrap());
+    }
 
     for (_host, uptime) in uptimes.iter_mut() {
         let sum: f64 = uptime.values.iter().sum();
