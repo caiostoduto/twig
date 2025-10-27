@@ -24,6 +24,27 @@ A Discord bot built with Rust for managing Tailscale networks and monitoring Min
 - `INFLUXDB_ORG` - InfluxDB organization
 - `INFLUXDB_BUCKET` - InfluxDB bucket name
 - `INFLUXDB_TOKEN` - InfluxDB authentication token
+- `RUST_LOG` - Logging level (trace, debug, info, warn, error). Default: `info`
+
+### Logging
+
+The bot uses environment-based logging configuration via the `RUST_LOG` environment variable:
+
+```bash
+# Show all info and higher logs (default)
+RUST_LOG=info cargo run
+
+# Show debug logs
+RUST_LOG=debug cargo run
+
+# Show trace logs only for twig, warn for dependencies
+RUST_LOG=twig=trace,serenity=warn cargo run
+
+# Show only warnings and errors
+RUST_LOG=warn cargo run
+```
+
+For more information on log filtering, see the [tracing-subscriber documentation](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html).
 
 ## Building
 

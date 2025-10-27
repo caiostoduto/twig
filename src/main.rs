@@ -54,13 +54,29 @@ pub async fn start() {
         // This code is run before every command
         pre_command: |ctx| {
             Box::pin(async move {
-                info!("Executing command {}...", ctx.command().qualified_name);
+                info!(
+                    "[pre_command::{}] {} ({}) @ {}",
+                    ctx.command().qualified_name,
+                    ctx.author().name,
+                    ctx.author().id,
+                    ctx.guild()
+                        .map(|g| g.name.to_string())
+                        .unwrap_or_else(|| "DM".to_string())
+                );
             })
         },
         // This code is run after a command if it was successful (returned Ok)
         post_command: |ctx| {
             Box::pin(async move {
-                info!("Executed command {}!", ctx.command().qualified_name);
+                info!(
+                    "[post_command::{}] {} ({}) @ {}",
+                    ctx.command().qualified_name,
+                    ctx.author().name,
+                    ctx.author().id,
+                    ctx.guild()
+                        .map(|g| g.name.to_string())
+                        .unwrap_or_else(|| "DM".to_string())
+                );
             })
         },
         // Enforce command checks even for owners (enforced by default)
@@ -75,14 +91,14 @@ pub async fn start() {
     let framework = poise::Framework::builder()
         .setup(move |ctx, _ready, framework| {
             Box::pin(async move {
-                info!("Logged in as {}", _ready.user.name);
+                info!("[framework::setup] Logged in as {}", _ready.user.name);
 
                 // Initialize database
                 let conn = utils::db::connect().expect("Failed to connect to database");
                 utils::db::initialize_db(&conn)
                     .map_err(|e| format!("Failed to initialize database: {}", e))?;
 
-                info!("Database initialized successfully");
+                info!("[framework::setup] Database initialized successfully");
 
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 Ok(Data {
@@ -108,7 +124,23 @@ pub async fn start() {
 #[dotenvy::load(required = false)]
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    // Initialize logging with environment variable support
+    // Set RUST_LOG environment variable to control log levels
+    // Examples:
+    //   RUST_LOG=debug       - Show all debug and higher logs
+    //   RUST_LOG=twig=trace  - Show trace logs only for twig crate
+    //   RUST_LOG=info        - Show info and higher (default)
+    use tracing_subscriber::{EnvFilter, fmt};
+
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    fmt()
+        .with_env_filter(env_filter)
+        .with_target(true)
+        .with_thread_ids(false)
+        .with_line_number(false)
+        .with_file(false)
+        .init();
 
     start().await;
 }
