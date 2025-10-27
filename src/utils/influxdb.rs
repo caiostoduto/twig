@@ -43,7 +43,7 @@ impl InfluxDB {
 
         let mut lines: Vec<Vec<String>> = text
             .lines()
-            .map(|line| line.split(",").map(|s| s.to_string()).collect())
+            .map(|line| line.split(',').map(|s| s.to_string()).collect())
             .collect();
 
         lines.remove(0);
