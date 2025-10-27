@@ -232,12 +232,12 @@ async fn tailscale_tag_exists(ctx: &Context<'_>, tag: &str) -> bool {
     // Check if exists in database
     if let Ok(db) = ctx.data().db.lock() {
         tag_exists = db
-            .execute(
+            .query_row(
                 "SELECT EXISTS (SELECT 1 FROM tailscale_tags WHERE id = ?1)",
                 [tag],
+                |row| row.get::<_, bool>(0),
             )
-            .ok()
-            .is_some();
+            .unwrap_or(false);
     }
 
     if tag_exists {
