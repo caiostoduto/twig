@@ -1,0 +1,9 @@
+services:
+  twig:
+    build: .
+    container_name: twig
+    env_file:
+      - .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
