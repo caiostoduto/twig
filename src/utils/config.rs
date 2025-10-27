@@ -43,8 +43,9 @@ impl Config {
             discord_token: env::var("DISCORD_TOKEN")
                 .expect("Environment variable `DISCORD_TOKEN` not set"),
             discord_owners_ids: env::var("DISCORD_OWNER_ID")
-                .unwrap_or("".to_string())
+                .unwrap_or_default()
                 .split(',')
+                .filter(|id| !id.trim().is_empty())
                 .map(|id| {
                     id.parse()
                         .expect("Each `DISCORD_OWNER_ID` must be a valid u64 user ID")
