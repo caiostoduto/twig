@@ -76,8 +76,14 @@ impl TailscaleClient {
             return Ok(());
         }
 
-        let client_id = config::get_config().tailscale_client_id.as_ref();
-        let client_secret = config::get_config().tailscale_client_secret.as_ref();
+        let client_id = config::get_config()
+            .tailscale_client_id
+            .as_ref()
+            .expect("TAILSCALE_CLIENT_ID environment variable must be set");
+        let client_secret = config::get_config()
+            .tailscale_client_secret
+            .as_ref()
+            .expect("TAILSCALE_CLIENT_SECRET environment variable must be set");
 
         let response = self
             .http

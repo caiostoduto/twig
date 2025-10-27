@@ -13,7 +13,10 @@ impl DockerClient {
         DockerClient {
             client: Client::builder()
                 .unix_socket(Path::new(
-                    config::get_config().docker_socket.as_ref().unwrap(),
+                    config::get_config()
+                        .docker_socket
+                        .as_ref()
+                        .expect("DOCKER_SOCKET environment variable must be set"),
                 ))
                 .build()
                 .unwrap(),

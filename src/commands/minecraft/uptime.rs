@@ -64,6 +64,7 @@ async fn get_minecraft_servers_uptime() -> HashMap<String, MinecraftUptime> {
     let mut uptimes = HashMap::new();
 
     for uptime in client
+        .unwrap()
         .query(format!(
             "from(bucket: \"{}\")
         |> range(start: -6h)
@@ -76,6 +77,7 @@ async fn get_minecraft_servers_uptime() -> HashMap<String, MinecraftUptime> {
             config::get_config().influxdb_bucket.as_deref().expect("INFLUXDB_BUCKET environment variable must be set")
         ))
         .await
+        .unwrap()
         .into_iter()
     {
         uptimes
