@@ -13,7 +13,7 @@ impl InfluxDB {
             "Authorization",
             header::HeaderValue::from_str(&format!(
                 "Bearer {}",
-                config::get_config().influxdb_token.as_deref().unwrap()
+                config::get_config().influxdb_token.as_deref().expect("INFLUXDB_TOKEN environment variable must be set")
             ))
             .unwrap(),
         );
