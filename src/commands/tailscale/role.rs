@@ -2,134 +2,33 @@ use poise::{
     CreateReply,
     serenity_prelude::{Mentionable, RoleId, all::Role},
 };
-use snowflaked::Generator;
+use tracing::info;
 
 use crate::{
     Context, Error,
     utils::{checks, config, embed},
 };
 
-#[poise::command(slash_command, subcommands("join", "role"))]
-pub async fn tailscale(_ctx: Context<'_>) -> Result<(), Error> {
-    Ok(())
-}
-
-/// Join a  Tailscale network
-#[poise::command(slash_command)]
-async fn join(ctx: Context<'_>) -> Result<(), Error> {
-    ctx.defer_ephemeral().await?;
-
-    let mut user_id: Option<u64> = None;
-
-    // Firstly, check for permissions
-    // any(user.roles for user in guilds where guilds == db.guilds)
-
-    // Secondly, get the user ID from the database
-    if let Ok(db) = ctx.data().db.lock() {
-        match db
-            .query_row(
-                "SELECT users.id FROM users
-                JOIN discord_users ON users.id = discord_users.user_id
-                WHERE discord_users.id = ?1
-                LIMIT 1",
-                [ctx.author().id.get()],
-                |row| row.get(0),
-            )
-            .ok()
-        {
-            Some(id) => user_id = Some(id),
-            None => {
-                user_id = Some(Generator::new(7332).generate());
-
-                db.execute("INSERT INTO users (id) VALUES (?1)", [user_id])
-                    .ok();
-
-                db.execute(
-                    "INSERT INTO discord_users (id, user_id) VALUES (?1, ?2)",
-                    [ctx.author().id.get(), user_id.unwrap()],
-                )
-                .ok();
-            }
-        };
-    }
-
-    // Delete any existing join links for this user
-    // Delete the devices associated with the user
-
-    // Create a new join link
-
-    Ok(())
-}
-
+/// Tailscale role management commands
 #[poise::command(
     slash_command,
     subcommands("assign", "unassign", "list"),
     check = "checks::is_owner"
 )]
-async fn role(_ctx: Context<'_>) -> Result<(), Error> {
+pub async fn role(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+/// Autocomplete Tailscale tags
 async fn autocomplete_tags(ctx: Context<'_>, _partial: &str) -> Vec<String> {
-    let client = &ctx.data().tailscale_client;
+    let tags = fetch_tags_from_tailscale_api(&ctx).await;
+    sync_tags_with_database(&ctx, &tags);
 
-    match client.get_policy_file().await {
-        Ok(policy_file) => {
-            let Some(tag_owners) = policy_file.get("tagOwners").and_then(|v| v.as_object()) else {
-                return Vec::new();
-            };
-
-            let tags: Vec<String> = tag_owners
-                .iter()
-                .filter_map(|(key, owners)| {
-                    let includes = owners.as_array().map_or(false, |arr| {
-                        arr.iter()
-                            .any(|s| s.as_str() == Some(&config::get_config().tailscale_tag))
-                    });
-                    if includes { Some(key.clone()) } else { None }
-                })
-                .collect();
-
-            // Sync tags with database
-            if let Ok(db) = ctx.data().db.lock() {
-                // Get existing tags from database
-                let existing_tags: Vec<String> = db
-                    .prepare("SELECT id FROM tailscale_tags")
-                    .and_then(|mut stmt| {
-                        stmt.query_map([], |row| row.get(0))
-                            .map(|rows| rows.filter_map(|r| r.ok()).collect())
-                    })
-                    .unwrap_or_default();
-
-                // Delete tags that no longer exist in Tailscale
-                for existing_tag in &existing_tags {
-                    if !tags.contains(existing_tag) {
-                        db.execute("DELETE FROM tailscale_tags WHERE id = ?1", [existing_tag])
-                            .ok();
-                    }
-                }
-
-                // Add new tags that don't exist in database
-                for tag in &tags {
-                    if !existing_tags.contains(tag) {
-                        db.execute(
-                            "INSERT OR IGNORE INTO tailscale_tags (id) VALUES (?1)",
-                            [tag],
-                        )
-                        .ok();
-                    }
-                }
-            }
-
-            return tags;
-        }
-        Err(_err) => {
-            return Vec::new();
-        }
-    }
+    info!("[autocomplete_tags] ({}): {:?}", tags.len(), tags);
+    tags
 }
 
-/// Assign a role to a  Tailscale tag
+/// Assign a role to a Tailscale tag
 #[poise::command(slash_command, guild_only = true)]
 async fn assign(
     ctx: Context<'_>,
@@ -140,59 +39,37 @@ async fn assign(
     #[autocomplete = "autocomplete_tags"]
     tag: String,
 ) -> Result<(), Error> {
+    ctx.defer_ephemeral().await?;
+
+    // Check if role is @everyone
     if role.id.get() == role.guild_id.get() {
         let embed = embed::get_embed_template(embed::EmbedStatus::Error)
-            .title("🛜  Tailscale role assign")
+            .title("<:tailscale:1431362623194267809>  Tailscale role assign")
             .description("You cannot assign the @everyone role.");
 
         ctx.send(CreateReply::default().embed(embed).ephemeral(true))
             .await?;
+
         return Ok(());
     }
 
-    let mut existing_tags: Vec<String> = Vec::new();
-
-    if let Ok(db) = ctx.data().db.lock() {
-        existing_tags = db
-            .prepare("SELECT id FROM tailscale_tags")
-            .and_then(|mut stmt| {
-                stmt.query_map([], |row| row.get(0))
-                    .map(|rows| rows.filter_map(|r| r.ok()).collect())
-            })
-            .unwrap_or_default();
-    }
-
-    if !existing_tags.contains(&tag) {
+    // Check if tag exists
+    if !tailscale_tag_exists(&ctx, &tag).await {
         let embed = embed::get_embed_template(embed::EmbedStatus::Error)
-            .title("🛜  Tailscale role assign")
+            .title("<:tailscale:1431362623194267809>  Tailscale role assign")
             .description(format!("Tag `{}` does not exist.", tag));
 
         ctx.send(CreateReply::default().embed(embed).ephemeral(true))
             .await?;
+
         return Ok(());
     }
 
-    if let Ok(db) = ctx.data().db.lock() {
-        db.execute(
-            "DELETE FROM discord_guild_roles WHERE tailscale_tag_id = ?1",
-            [tag.clone()],
-        )
-        .ok();
-
-        db.execute(
-            "INSERT OR IGNORE INTO discord_guilds (id) VALUES (?1)",
-            (role.guild_id.get(),),
-        )
-        .ok();
-
-        db.execute(
-            "INSERT OR REPLACE INTO discord_guild_roles (id, discord_guild_id, tailscale_tag_id) VALUES (?1, ?2, ?3)",
-            (role.id.get(), role.guild_id.get(), tag.clone()),
-        ).ok();
-    }
+    // Assign role to tag in database
+    tailscale_assign_tag(&ctx, &tag, &role).await;
 
     let embed = embed::get_embed_template(embed::EmbedStatus::Success)
-        .title("🛜  Tailscale role assign")
+        .title("<:tailscale:1431362623194267809>  Tailscale role assign")
         .description(format!(
             "Role {} has been assigned to `{}`.",
             role.mention(),
@@ -212,9 +89,12 @@ async fn unassign(
 
     #[description = "Role to be unassigned"] role: Role,
 ) -> Result<(), Error> {
+    ctx.defer_ephemeral().await?;
+
+    // Check if role is @everyone
     if role.id.get() == role.guild_id.get() {
         let embed = embed::get_embed_template(embed::EmbedStatus::Error)
-            .title("🛜  Tailscale role unassign")
+            .title("<:tailscale:1431362623194267809>  Tailscale role unassign")
             .description("You cannot unassign the @everyone role.");
 
         ctx.send(CreateReply::default().embed(embed).ephemeral(true))
@@ -223,8 +103,8 @@ async fn unassign(
         return Ok(());
     }
 
+    // Remove role assignment from database
     let mut deleted_role = false;
-
     if let Ok(db) = ctx.data().db.lock() {
         match db.execute(
             "DELETE FROM discord_guild_roles WHERE id = ?1",
@@ -235,20 +115,16 @@ async fn unassign(
         }
     }
 
-    if !deleted_role {
-        let embed = embed::get_embed_template(embed::EmbedStatus::Error)
-            .title("🛜  Tailscale role unassign")
-            .description(format!("Role {} was not assigned.", role.mention()));
-
-        ctx.send(CreateReply::default().embed(embed).ephemeral(true))
-            .await?;
-
-        return Ok(());
-    }
-
     let embed = embed::get_embed_template(embed::EmbedStatus::Success)
-        .title("🛜  Tailscale role unassign")
-        .description(format!("Role {} has been unassigned.", role.mention()));
+        .title("<:tailscale:1431362623194267809>  Tailscale role unassign")
+        .description(if deleted_role {
+            format!("Role {} has been unassigned.", role.mention())
+        } else {
+            format!(
+                "Role {} was not assigned to any tailscale tag.",
+                role.mention()
+            )
+        });
 
     ctx.send(CreateReply::default().embed(embed).ephemeral(true))
         .await?;
@@ -261,8 +137,8 @@ async fn unassign(
 async fn list(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
 
-    let mut embed =
-        embed::get_embed_template(embed::EmbedStatus::Success).title("🛜  Tailscale role list");
+    let mut embed = embed::get_embed_template(embed::EmbedStatus::Success)
+        .title("<:tailscale:1431362623194267809>  Tailscale role list");
 
     if let Ok(db) = ctx.data().db.lock() {
         let mut stmt = db
@@ -348,4 +224,127 @@ async fn list(ctx: Context<'_>) -> Result<(), Error> {
         .await?;
 
     Ok(())
+}
+
+async fn tailscale_tag_exists(ctx: &Context<'_>, tag: &str) -> bool {
+    let mut tag_exists = false;
+
+    // Check if exists in database
+    if let Ok(db) = ctx.data().db.lock() {
+        tag_exists = db
+            .query_row(
+                "SELECT EXISTS (SELECT 1 FROM tailscale_tags WHERE id = ?1)",
+                [tag],
+                |row| row.get::<_, bool>(0),
+            )
+            .unwrap_or(false);
+    }
+
+    if tag_exists {
+        return true;
+    } else {
+        // Fetch tags from Tailscale API
+        let tags = fetch_tags_from_tailscale_api(ctx).await;
+        sync_tags_with_database(ctx, &tags);
+
+        return tags.contains(&tag.to_string());
+    }
+}
+
+/// Assign tag to the database
+async fn tailscale_assign_tag(ctx: &Context<'_>, tag: &str, role: &Role) {
+    if let Ok(db) = ctx.data().db.lock() {
+        // Remove any existing assignment for this tag
+        db.execute(
+            "DELETE FROM discord_guild_roles WHERE tailscale_tag_id = ?1",
+            [tag],
+        )
+        .ok();
+
+        // Ensure guild exists in database
+        db.execute(
+            "INSERT OR IGNORE INTO discord_guilds (id) VALUES (?1)",
+            (role.guild_id.get(),),
+        )
+        .ok();
+
+        // Assign role to tag
+        db.execute(
+            "INSERT OR REPLACE INTO discord_guild_roles (id, discord_guild_id, tailscale_tag_id) VALUES (?1, ?2, ?3)",
+            (role.id.get(), role.guild_id.get(), tag),
+        ).ok();
+    }
+}
+
+/// Fetch tags from Tailscale API
+async fn fetch_tags_from_tailscale_api(ctx: &Context<'_>) -> Vec<String> {
+    // Fetch tags from Tailscale API
+    let client = &ctx.data().tailscale_client;
+
+    // Fetch policy file
+    match client.get_policy_file().await {
+        Ok(policy_file) => {
+            // Extract tags
+            let Some(tag_owners) = policy_file.get("tagOwners").and_then(|v| v.as_object()) else {
+                return Vec::new();
+            };
+
+            // Collect tags that include the configured tag owner
+            let tags = tag_owners
+                .iter()
+                .filter_map(|(key, owners)| {
+                    let includes = owners.as_array().map_or(false, |arr| {
+                        arr.iter()
+                            .any(|s| s.as_str() == config::get_config().tailscale_tag.as_deref())
+                    });
+
+                    if includes { Some(key.clone()) } else { None }
+                })
+                .collect();
+
+            return tags;
+        }
+        Err(_err) => {
+            return Vec::new();
+        }
+    }
+}
+
+/// Synchronize tags with the database
+fn sync_tags_with_database(ctx: &Context<'_>, tags: &[String]) {
+    if let Ok(db) = ctx.data().db.lock() {
+        // Remove tags that are no longer present
+        if !tags.is_empty() {
+            // Create placeholders for the IN clause
+            let placeholders = std::iter::repeat("?")
+                .take(tags.len())
+                .collect::<Vec<_>>()
+                .join(",");
+
+            // Prepare the DELETE statement
+            let mut stmt = db
+                .prepare(&format!(
+                    "DELETE FROM tailscale_tags WHERE id NOT IN ({})",
+                    placeholders
+                ))
+                .expect("Failed to prepare DELETE statement for tailscale_tags with dynamic placeholders. Check SQL syntax and tag list.");
+
+            // Bind all tag values as parameters
+            let params: Vec<&dyn rusqlite::ToSql> =
+                tags.iter().map(|t| t as &dyn rusqlite::ToSql).collect();
+            stmt.execute(rusqlite::params_from_iter(params.iter())).ok();
+        } else {
+            // If no tags, delete all
+            db.execute("DELETE FROM tailscale_tags", []).ok();
+        }
+
+        // Insert new tags
+        for tag in tags {
+            db.execute(
+                "INSERT OR IGNORE INTO tailscale_tags (id) VALUES (?)",
+                [tag],
+            )
+            .ok();
+        }
+    }
 }

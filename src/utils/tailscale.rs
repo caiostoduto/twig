@@ -76,8 +76,14 @@ impl TailscaleClient {
             return Ok(());
         }
 
-        let client_id = &config::get_config().tailscale_client_id;
-        let client_secret = &config::get_config().tailscale_client_secret;
+        let client_id = config::get_config()
+            .tailscale_client_id
+            .as_ref()
+            .expect("TAILSCALE_CLIENT_ID environment variable must be set");
+        let client_secret = config::get_config()
+            .tailscale_client_secret
+            .as_ref()
+            .expect("TAILSCALE_CLIENT_SECRET environment variable must be set");
 
         let response = self
             .http
@@ -85,10 +91,7 @@ impl TailscaleClient {
                 "{}/oauth/token",
                 config::get_config().tailscale_api_base
             ))
-            .form(&[
-                ("client_id", client_id.as_str()),
-                ("client_secret", client_secret.as_str()),
-            ])
+            .form(&[("client_id", client_id), ("client_secret", client_secret)])
             .send()
             .await?;
 

@@ -100,8 +100,10 @@ pub async fn start() {
     client.unwrap().start_autosharded().await.unwrap();
 }
 
+#[dotenvy::load(required = false)]
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
+
     start().await;
 }
