@@ -23,7 +23,7 @@ impl InfluxDB {
         InfluxDB { client }
     }
 
-    pub async fn query(self, query: String) -> Vec<Vec<String>> {
+    pub async fn query(&self, query: String) -> Vec<Vec<String>> {
         let res = self
             .client
             .post(&format!(
