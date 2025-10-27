@@ -327,8 +327,7 @@ fn sync_tags_with_database(ctx: &Context<'_>, tags: &[String]) {
                     "DELETE FROM tailscale_tags WHERE id NOT IN ({})",
                     placeholders
                 ))
-                .ok()
-                .unwrap();
+                .expect("Failed to prepare DELETE statement for tailscale_tags with dynamic placeholders. Check SQL syntax and tag list.");
 
             // Bind all tag values as parameters
             let params: Vec<&dyn rusqlite::ToSql> =
