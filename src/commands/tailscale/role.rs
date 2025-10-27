@@ -28,7 +28,7 @@ async fn autocomplete_tags(ctx: Context<'_>, _partial: &str) -> Vec<String> {
     tags
 }
 
-/// Assign a role to a  Tailscale tag
+/// Assign a role to a Tailscale tag
 #[poise::command(slash_command, guild_only = true)]
 async fn assign(
     ctx: Context<'_>,
