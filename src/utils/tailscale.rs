@@ -3,7 +3,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::utils::config;
 
@@ -106,10 +106,18 @@ impl TailscaleClient {
         if !response.status().is_success() {
             let code = response.status().as_u16();
             let body = response.text().await.unwrap_or_default();
+            warn!(
+                "Failed to renew Tailscale OAuth token: status {}, body: {}",
+                code, body
+            );
             return Err(TailscaleError::Api(code, body));
         }
 
         let token: AccessToken = response.json().await?;
+        debug!(
+            "Tailscale OAuth token renewed successfully. Access token: {}",
+            token.access_token
+        );
         // Update the token under the lock
         let mut token_guard = self.access_token.lock().await;
         *token_guard = Some((token, Instant::now()));
@@ -144,7 +152,10 @@ impl TailscaleClient {
         if !response.status().is_success() {
             let code = response.status().as_u16();
             let body = response.text().await.unwrap_or_default();
-
+            warn!(
+                "Tailscale API request failed for endpoint '{}': status {}, body: {}",
+                endpoint, code, body
+            );
             return Err(TailscaleError::Api(code, body));
         }
 

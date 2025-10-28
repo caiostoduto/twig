@@ -305,11 +305,6 @@ async fn fetch_tags_from_tailscale_api(ctx: &Context<'_>) -> Vec<String> {
             return tags;
         }
         Err(err) => {
-            warn!(
-                "[fetch_tags_from_tailscale_api] Failed to fetch policy file: {}",
-                err
-            );
-
             return Vec::new();
         }
     }
