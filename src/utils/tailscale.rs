@@ -101,7 +101,18 @@ impl TailscaleClient {
             ))
             .form(&[("client_id", client_id), ("client_secret", client_secret)])
             .send()
-            .await?;
+            .await;
+
+        let response = match response {
+            Ok(resp) => resp,
+            Err(err) => {
+                warn!(
+                    "Failed to send Tailscale OAuth token renewal request: {}",
+                    err
+                );
+                return Err(TailscaleError::Request(err));
+            }
+        };
 
         if !response.status().is_success() {
             let code = response.status().as_u16();
@@ -113,7 +124,13 @@ impl TailscaleClient {
             return Err(TailscaleError::Api(code, body));
         }
 
-        let token: AccessToken = response.json().await?;
+        let token: AccessToken = match response.json().await {
+            Ok(token) => token,
+            Err(err) => {
+                warn!("Failed to parse Tailscale OAuth token response: {}", err);
+                return Err(TailscaleError::Request(err));
+            }
+        };
         debug!(
             "Tailscale OAuth token renewed successfully. Access token: {}",
             token.access_token
@@ -147,7 +164,18 @@ impl TailscaleClient {
             ))
             .bearer_auth(&token)
             .send()
-            .await?;
+            .await;
+
+        let response = match response {
+            Ok(resp) => resp,
+            Err(err) => {
+                warn!(
+                    "Failed to send Tailscale API request to endpoint '{}': {}",
+                    endpoint, err
+                );
+                return Err(TailscaleError::Request(err));
+            }
+        };
 
         if !response.status().is_success() {
             let code = response.status().as_u16();
@@ -159,7 +187,16 @@ impl TailscaleClient {
             return Err(TailscaleError::Api(code, body));
         }
 
-        let text = response.text().await?;
+        let text = match response.text().await {
+            Ok(text) => text,
+            Err(err) => {
+                warn!(
+                    "Failed to read response text from Tailscale API endpoint '{}': {}",
+                    endpoint, err
+                );
+                return Err(TailscaleError::Request(err));
+            }
+        };
 
         let text: String = text
             .lines()
@@ -176,7 +213,16 @@ impl TailscaleClient {
             .replace(",}", "}");
 
         // Try to parse as JSON
-        let json: Value = serde_json::from_str(&text)?;
+        let json: Value = match serde_json::from_str(&text) {
+            Ok(json) => json,
+            Err(err) => {
+                warn!(
+                    "Failed to parse JSON response from Tailscale API endpoint '{}': {}",
+                    endpoint, err
+                );
+                return Err(TailscaleError::Json(err));
+            }
+        };
         debug!("[get_json] Tailscale API response JSON: {}", json);
 
         Ok(json)

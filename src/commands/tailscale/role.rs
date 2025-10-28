@@ -2,7 +2,7 @@ use poise::{
     CreateReply,
     serenity_prelude::{Mentionable, RoleId, all::Role},
 };
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::{
     Context, Error,
@@ -304,7 +304,7 @@ async fn fetch_tags_from_tailscale_api(ctx: &Context<'_>) -> Vec<String> {
 
             return tags;
         }
-        Err(err) => {
+        Err(_err) => {
             return Vec::new();
         }
     }
