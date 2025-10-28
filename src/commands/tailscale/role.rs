@@ -2,7 +2,7 @@ use poise::{
     CreateReply,
     serenity_prelude::{Mentionable, RoleId, all::Role},
 };
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::{
     Context, Error,
@@ -304,7 +304,12 @@ async fn fetch_tags_from_tailscale_api(ctx: &Context<'_>) -> Vec<String> {
 
             return tags;
         }
-        Err(_err) => {
+        Err(err) => {
+            warn!(
+                "[fetch_tags_from_tailscale_api] Failed to fetch policy file: {}",
+                err
+            );
+
             return Vec::new();
         }
     }

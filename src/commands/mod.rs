@@ -2,8 +2,6 @@ mod minecraft;
 mod tailscale;
 mod utilitary;
 
-use tracing::info;
-
 use crate::{Data, Error};
 
 /// Returns all bot commands
