@@ -11,6 +11,9 @@ pub struct Config {
     pub discord_token: String,
     pub discord_owners_ids: Vec<UserId>,
 
+    // SQLite Database URL
+    pub database_url: String,
+
     // Tailscale
     pub tailscale_api_base: &'static str,
     pub tailscale_client_id: Option<String>,
@@ -57,6 +60,9 @@ impl Config {
                         .expect("Each `DISCORD_OWNER_ID` must be a valid u64 user ID")
                 })
                 .collect(),
+
+            // SQLite Database URL
+            database_url: env::var("DATABASE_URL").unwrap_or("sqlite:twig.sqlite".into()),
 
             // Tailscale
             tailscale_api_base: "https://api.tailscale.com/api/v2",

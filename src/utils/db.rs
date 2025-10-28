@@ -2,9 +2,11 @@ use rusqlite::{Connection, Result};
 use std::fs;
 use tracing::info;
 
+use crate::utils::config;
+
 /// Opens a connection to the SQLite database
 pub fn connect() -> Result<Connection> {
-    let conn = Connection::open("twig.sqlite")?;
+    let conn = Connection::open(config::get_config().database_url.clone())?;
     info!("[connect] Connected to the database successfully.");
 
     Ok(conn)
