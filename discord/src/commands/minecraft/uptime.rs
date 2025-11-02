@@ -31,7 +31,7 @@ pub async fn uptime(ctx: Context<'_>) -> Result<(), Error> {
                 .join("");
 
             (
-                format!("{} ({:.2}%)", &id, uptime.mean * 100.0),
+                format!("{} ({:.4}%)", &id, uptime.mean * 100.0),
                 uptime_text,
                 false,
             )
