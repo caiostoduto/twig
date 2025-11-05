@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use poise::CreateReply;
+use poise::{CreateReply, serenity_prelude::CreateEmbed};
 use tracing::debug;
 
 use crate::{
@@ -13,6 +13,24 @@ use crate::{
 pub async fn uptime(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
 
+    // Send the response
+    ctx.send(
+        CreateReply::default()
+            .embed(embed_message().await)
+            .ephemeral(true),
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[derive(Debug)]
+pub struct MinecraftUptime {
+    values: Vec<f64>,
+    mean: f64,
+}
+
+async fn embed_message() -> CreateEmbed {
     // Get Minecraft servers uptime data
     let uptimes = get_minecraft_servers_uptime().await;
 
@@ -42,21 +60,9 @@ pub async fn uptime(ctx: Context<'_>) -> Result<(), Error> {
     fields.sort_by_key(|f| f.0.clone());
 
     // Create embed response
-    let embed = embed::get_embed_template(embed::EmbedStatus::Success)
+    return embed::get_embed_template(embed::EmbedStatus::Success)
         .title("📊  Minecraft Status (6h)")
         .fields(fields);
-
-    // Send the response
-    ctx.send(CreateReply::default().embed(embed).ephemeral(true))
-        .await?;
-
-    Ok(())
-}
-
-#[derive(Debug)]
-pub struct MinecraftUptime {
-    values: Vec<f64>,
-    mean: f64,
 }
 
 /// Retrieves the health status of all Minecraft server containers
