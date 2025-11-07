@@ -1,6 +1,6 @@
 use poise::serenity_prelude::{self as serenity};
-use rusqlite::Connection;
-use std::sync::{Arc, Mutex};
+use sqlx::SqlitePool;
+use std::sync::Arc;
 use tracing::{debug, error, info};
 
 mod commands;
@@ -12,11 +12,12 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
 /// Custom user data passed to all command functions
+#[derive(Clone)]
 pub struct Data {
-    /// Shared database connection
-    pub db: Arc<Mutex<Connection>>,
+    /// Shared database connection pool
+    pub db: SqlitePool,
     /// Tailscale API client
-    pub tailscale_client: Arc<utils::tailscale::TailscaleClient>,
+    pub ts_client: Arc<utils::tailscale::TailscaleClient>,
 }
 
 /// Custom error handler for the bot framework
@@ -101,9 +102,9 @@ pub async fn start() {
                 info!("[framework::setup] Logged in as {}", _ready.user.name);
 
                 // Initialize database
-                let conn = utils::db::connect().expect("Failed to connect to database");
-                utils::db::initialize_db(&conn)
-                    .map_err(|e| format!("Failed to initialize database: {}", e))?;
+                let pool = utils::db::connect()
+                    .await
+                    .expect("Failed to connect to database");
 
                 info!("[framework::setup] Database initialized successfully");
 
@@ -113,10 +114,14 @@ pub async fn start() {
                 );
 
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data {
-                    db: Arc::new(Mutex::new(conn)),
-                    tailscale_client: Arc::new(utils::tailscale::TailscaleClient::new()),
-                })
+
+                // Create the Data structure
+                let data = Arc::new(Data {
+                    db: pool,
+                    ts_client: Arc::new(utils::tailscale::TailscaleClient::new()),
+                });
+
+                Ok(Arc::try_unwrap(data).unwrap_or_else(|arc| (*arc).clone()))
             })
         })
         .options(options)

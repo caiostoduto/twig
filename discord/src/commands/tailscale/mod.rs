@@ -1,18 +1,21 @@
-mod join;
-mod role;
+mod assign;
+// mod join;
+mod unassign;
 
 use crate::{Context, Data, Error, utils::config};
 
-use join::*;
-use role::*;
+use assign::*;
+// use join::*;
+use unassign::*;
+
 use tracing::info;
 
 /// Tailscale command group
 #[poise::command(
     slash_command,
-    subcommands("join", "role"),
-    subcommand_required = true,
-    category = "Tailscale"
+    category = "Tailscale",
+    subcommands("assign", "unassign"),
+    subcommand_required = true
 )]
 pub async fn tailscale(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
@@ -29,14 +32,10 @@ pub fn commands() -> Vec<poise::Command<Data, Error>> {
     .iter()
     .all(|f| f.is_some())
     {
-        info!(
-            "[commands::tailscale::commands] Tailscale config detected, enabling Tailscale commands"
-        );
+        info!("Tailscale config detected, enabling Tailscale commands");
         vec![tailscale()]
     } else {
-        info!(
-            "[commands::tailscale::commands] Tailscale config not detected, skipping Tailscale commands"
-        );
+        info!("Tailscale config not detected, skipping Tailscale commands");
         vec![]
     }
 }

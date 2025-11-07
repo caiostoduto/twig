@@ -35,6 +35,9 @@ pub struct Config {
     pub influxdb_org: Option<String>,
     pub influxdb_bucket: Option<String>,
     pub influxdb_token: Option<String>,
+
+    // gRPC
+    pub grpc_port: u16,
 }
 
 /// Returns whether the application is running in debug mode
@@ -88,6 +91,12 @@ impl Config {
             influxdb_org: env::var("INFLUXDB_ORG").ok(),
             influxdb_bucket: env::var("INFLUXDB_BUCKET").ok(),
             influxdb_token: env::var("INFLUXDB_TOKEN").ok(),
+
+            // gRPC
+            grpc_port: env::var("GRPC_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(50051),
         };
 
         debug!("[from_env] Loaded configuration: {:?}", config);
