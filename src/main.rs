@@ -18,6 +18,9 @@ pub struct Data {
     pub db: SqlitePool,
     /// Tailscale API client
     pub ts_client: Arc<utils::tailscale::TailscaleClient>,
+    /// gRPC event broadcaster (optional, available after gRPC server starts)
+    pub grpc_event_tx:
+        Option<tokio::sync::broadcast::Sender<utils::grpc::minecraft_bridge::ServerEvent>>,
 }
 
 /// Custom error handler for the bot framework
@@ -119,6 +122,21 @@ pub async fn start() {
                 let data = Arc::new(Data {
                     db: pool,
                     ts_client: Arc::new(utils::tailscale::TailscaleClient::new()),
+                    grpc_event_tx: None, // Will be set later when gRPC server starts
+                });
+
+                // Clone context for gRPC server
+                let grpc_ctx = Arc::new(ctx.clone());
+                let grpc_data = Arc::clone(&data);
+                let grpc_port = utils::config::get_config().grpc_port;
+
+                // Spawn gRPC server in background
+                tokio::spawn(async move {
+                    let addr = format!("0.0.0.0:{}", grpc_port).parse().unwrap();
+                    if let Err(e) = utils::grpc::start_grpc_server(grpc_ctx, grpc_data, addr).await
+                    {
+                        error!("[gRPC] Server error: {}", e);
+                    }
                 });
 
                 Ok(Arc::try_unwrap(data).unwrap_or_else(|arc| (*arc).clone()))

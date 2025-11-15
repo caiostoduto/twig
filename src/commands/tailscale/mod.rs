@@ -1,11 +1,11 @@
 mod assign;
-// mod join;
+mod join;
 mod unassign;
 
 use crate::{Context, Data, Error, utils::config};
 
 use assign::*;
-// use join::*;
+use join::*;
 use unassign::*;
 
 use tracing::info;
@@ -14,7 +14,7 @@ use tracing::info;
 #[poise::command(
     slash_command,
     category = "Tailscale",
-    subcommands("assign", "unassign"),
+    subcommands("assign", "unassign", "join"),
     subcommand_required = true
 )]
 pub async fn tailscale(_ctx: Context<'_>) -> Result<(), Error> {

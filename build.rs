@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Compile the protobuf files
     tonic_prost_build::configure()
-        .compile_protos(&["../proto/minecraft_bridge.proto"], &["../proto"])
+        .compile_protos(&["./proto/minecraft_bridge.proto"], &["./proto"])
         .unwrap();
 
     Ok(())

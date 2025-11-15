@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package minecraft_bridge;
+
+service MinecraftBridge {
+  // RPC: Register client and send server list (called on connection)
+  rpc RegisterClient(ClientRegistration) returns (RegistrationResponse);
+  
+  // RPC: Check if player is allowed to join a specific server
+  rpc CheckPlayerAccess(PlayerAccessRequest) returns (PlayerAccessResponse);
+  
+  // Pub/Sub: Subscribe to events (server-streaming)
+  rpc SubscribeEvents(EventSubscription) returns (stream ServerEvent);
+}
+
+/// Client Registration (sent on connection)
+message ClientRegistration {
+  string client_id = 1;                 // Persistent client UUID
+  repeated MinecraftServer servers = 2; // List of servers managed by the client (velocity plugin)
+}
+
+message MinecraftServer {
+  string name = 1;              // Server name (velocity)
+  MinecraftServerType type = 2; // Type of server (lobby, game, etc.)
+}
+
+enum MinecraftServerType {
+  LOBBY = 0; // Lobby server
+  GAME = 1;  // Game server
+}
+
+message RegistrationResponse {
+  bool success = 1; // Registration success status
+}
+
+/// Player Access Check
+message PlayerAccessRequest {
+  string client_id = 1;   // Persistent client UUID
+  string server_name = 2; // Target server name (velocity)
+  string player_ipv4 = 3; // Player's IPv4 address
+}
+
+message PlayerAccessResponse {
+  AccessStatus status = 1; // Access status
+  string reason = 2;       // Optional message providing more details (code) [REQUIRES_SIGNUP only]
+}
+
+enum AccessStatus {
+  ALLOWED = 0;         // Player is allowed to join
+  DISALLOWED = 1;      // Player is not allowed to join
+  REQUIRES_SIGNUP = 2; // Player needs to sign up on Discord
+}
+
+/// Event Subscription
+message EventSubscription {
+  repeated EventType event_types = 1; // Filter by event types (empty = all)
+  string client_id = 2; // Persistent client UUID
+}
+
+// Server Events (Pub/Sub)
+message ServerEvent {
+  EventType event_type = 1; // Type of event
+  int64 timestamp = 2;      // Unix timestamp in milliseconds
+  
+  oneof event_data {
+    PlayerDisconnectEvent player_disconnect = 3;
+    // Add more event types as needed
+  }
+}
+
+// Event Types
+enum EventType {
+  PLAYER_DISCONNECT = 0;
+  // Add future event types here
+}
+
+// Player Disconnect Event
+message PlayerDisconnectEvent {
+  string player_ipv4 = 1;           // Player's IPv4 address
+  repeated string server_names = 2; // List of servers to disconnect from
+  string reason = 3;                // Reason for disconnect
+}
