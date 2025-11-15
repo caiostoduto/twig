@@ -14,12 +14,6 @@ pub struct Config {
     // SQLite Database URL
     pub database_url: String,
 
-    // Tailscale
-    pub tailscale_api_base: &'static str,
-    pub tailscale_client_id: Option<String>,
-    pub tailscale_client_secret: Option<String>,
-    pub tailscale_tag: Option<String>,
-
     // Git info (set at build time)
     pub commit_hash: &'static str,
     pub commit_branch: &'static str,
@@ -66,12 +60,6 @@ impl Config {
 
             // SQLite Database URL
             database_url: env::var("DATABASE_URL").unwrap_or("sqlite:twig.sqlite".into()),
-
-            // Tailscale
-            tailscale_api_base: "https://api.tailscale.com/api/v2",
-            tailscale_client_id: env::var("TAILSCALE_CLIENT_ID").ok(),
-            tailscale_client_secret: env::var("TAILSCALE_CLIENT_SECRET").ok(),
-            tailscale_tag: env::var("TAILSCALE_TAG").ok(),
 
             // Git info
             commit_hash: env!("VERGEN_GIT_SHA"),

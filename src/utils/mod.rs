@@ -5,4 +5,3 @@ pub mod docker;
 pub mod embed;
 pub mod grpc;
 pub mod influxdb;
-pub mod tailscale;

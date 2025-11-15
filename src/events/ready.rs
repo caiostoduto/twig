@@ -8,12 +8,12 @@ pub async fn handle(
     _data_about_bot: &serenity::Ready,
     _data: &Data,
 ) -> Result<(), Error> {
-    let activity = ActivityData::playing("with Tailscale APIs");
+    let activity = ActivityData::playing("with Minecraft APIs");
     let status = serenity::OnlineStatus::DoNotDisturb;
 
     ctx.set_presence(Some(activity), status);
 
-    info!("[ready::handle] Presence set: Playing with Tailscale APIs (Do Not Disturb)");
+    info!("[ready::handle] Presence set: Playing with Minecraft APIs (Do Not Disturb)");
 
     Ok(())
 }

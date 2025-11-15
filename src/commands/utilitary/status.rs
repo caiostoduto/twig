@@ -4,7 +4,6 @@ use crate::{
 };
 
 use poise::CreateReply;
-use std::time::Duration;
 use sysinfo::System;
 
 /// Time constants for uptime formatting
@@ -13,22 +12,13 @@ const SECS_PER_DAY: u64 = 86400;
 const SECS_PER_HOUR: u64 = 3600;
 const SECS_PER_MINUTE: u64 = 60;
 
-/// Tailscale local API endpoint timeout in milliseconds
-const TAILSCALE_TIMEOUT_MS: u64 = 200;
-/// Tailscale local IP address
-const TAILSCALE_LOCAL_IP: &str = "http://100.100.100.100";
-
 /// Display the bot's current status
 #[poise::command(slash_command, category = "Utilitary")]
 pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
 
     // Gather statuses concurrently
-    let (docker_status, shard_info, tailscale_status) = tokio::join!(
-        get_docker_status(),
-        get_shard_info(&ctx),
-        get_tailscale_status()
-    );
+    let (docker_status, shard_info) = tokio::join!(get_docker_status(), get_shard_info(&ctx));
 
     // Initialize system and refresh CPU/Memory
     let mut sys = System::new();
@@ -73,11 +63,6 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
             ),
             ("\u{200b}", &"\u{200b}".to_string(), true),
             ("<:docker:1431626218800808026> Docker", &docker_status, true),
-            (
-                "<:tailscale:1431362623194267809> Tailscale",
-                &tailscale_status,
-                true,
-            ),
             ("\u{200b}", &"\u{200b}".to_string(), true),
         ]);
 
@@ -103,29 +88,6 @@ fn format_uptime(total_secs: u64) -> String {
     let seconds = total_secs % SECS_PER_MINUTE;
 
     format!("{}w {}d {}h {}m {}s", weeks, days, hours, minutes, seconds)
-}
-
-/// Check Tailscale status
-async fn get_tailscale_status() -> String {
-    // Try to reach the Tailscale local IP
-    let client = match reqwest::Client::builder()
-        .timeout(Duration::from_millis(TAILSCALE_TIMEOUT_MS))
-        .build()
-    {
-        Ok(c) => c,
-        Err(_) => return "Error building client".to_string(),
-    };
-
-    match client.get(TAILSCALE_LOCAL_IP).send().await {
-        Ok(response) => {
-            if response.status().is_success() {
-                "Running".to_string()
-            } else {
-                "Not running".to_string()
-            }
-        }
-        Err(_) => "Not running".to_string(),
-    }
 }
 
 /// Check Docker status

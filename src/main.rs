@@ -16,8 +16,6 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 pub struct Data {
     /// Shared database connection pool
     pub db: SqlitePool,
-    /// Tailscale API client
-    pub ts_client: Arc<utils::tailscale::TailscaleClient>,
     /// gRPC event broadcaster (optional, available after gRPC server starts)
     pub grpc_event_tx:
         Option<tokio::sync::broadcast::Sender<utils::grpc::minecraft_bridge::ServerEvent>>,
@@ -121,7 +119,6 @@ pub async fn start() {
                 // Create the Data structure
                 let data = Arc::new(Data {
                     db: pool,
-                    ts_client: Arc::new(utils::tailscale::TailscaleClient::new()),
                     grpc_event_tx: None, // Will be set later when gRPC server starts
                 });
 
