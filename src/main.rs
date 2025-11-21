@@ -1,22 +1,28 @@
 use poise::serenity_prelude::{self as serenity};
-use rusqlite::Connection;
-use std::sync::{Arc, Mutex};
-use tracing::{error, info};
+use sqlx::SqlitePool;
+use std::sync::Arc;
+use tracing::{debug, error, info};
 
 mod commands;
 mod events;
+mod grpc;
+mod http;
 mod utils;
 
 // Types used by all command functions
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
-// Custom user data passed to all command functions
+/// Custom user data passed to all command functions
+#[derive(Clone)]
 pub struct Data {
-    pub db: Arc<Mutex<Connection>>,
-    pub tailscale_client: Arc<utils::tailscale::TailscaleClient>,
+    /// Shared database connection pool
+    pub db: SqlitePool,
+    /// gRPC event broadcaster (shared across all instances)
+    pub grpc_event_tx: Arc<tokio::sync::broadcast::Sender<grpc::minecraft_bridge::ServerEvent>>,
 }
 
+/// Custom error handler for the bot framework
 async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     // This is our custom error handler
     // They are many errors that can occur, so we only handle the ones we want to customize
@@ -34,29 +40,53 @@ async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
     }
 }
 
+/// Starts and runs the Discord bot
 pub async fn start() {
+    info!("[start] Starting Twig bot");
+
     // FrameworkOptions contains all of poise's configuration option in one struct
     // Every option can be omitted to use its default value
     let options = poise::FrameworkOptions {
         commands: commands::commands(),
         // Set bot owners who have special permissions
         owners: {
-            std::collections::HashSet::from_iter(
+            let owners = std::collections::HashSet::from_iter(
                 utils::config::get_config().discord_owners_ids.clone(),
-            )
+            );
+
+            info!("[start] Bot owners count: {}", owners.len());
+            debug!("[start] Bot owners IDs: {:?}", owners);
+
+            owners
         },
         // The global error handler for all error cases that may occur
         on_error: |error| Box::pin(on_error(error)),
         // This code is run before every command
         pre_command: |ctx| {
             Box::pin(async move {
-                info!("Executing command {}...", ctx.command().qualified_name);
+                info!(
+                    "[pre_command::{}] {} ({}) @ {}",
+                    ctx.command().qualified_name,
+                    ctx.author().name,
+                    ctx.author().id,
+                    ctx.guild()
+                        .map(|g| g.name.to_string())
+                        .unwrap_or_else(|| "DM".to_string())
+                );
             })
         },
         // This code is run after a command if it was successful (returned Ok)
         post_command: |ctx| {
             Box::pin(async move {
-                info!("Executed command {}!", ctx.command().qualified_name);
+                info!(
+                    "[post_command::{}] {} ({}) @ {}",
+                    ctx.command().qualified_name,
+                    ctx.author().name,
+                    ctx.author().id,
+                    ctx.guild()
+                        .map(|g| g.name.to_string())
+                        .unwrap_or_else(|| "DM".to_string())
+                );
             })
         },
         // Enforce command checks even for owners (enforced by default)
@@ -71,19 +101,64 @@ pub async fn start() {
     let framework = poise::Framework::builder()
         .setup(move |ctx, _ready, framework| {
             Box::pin(async move {
-                info!("Logged in as {}", _ready.user.name);
+                info!("[framework::setup] Logged in as {}", _ready.user.name);
 
                 // Initialize database
-                let conn = utils::db::connect().expect("Failed to connect to database");
-                utils::db::initialize_db(&conn).expect("Failed to initialize database");
+                let pool = utils::db::connect()
+                    .await
+                    .expect("Failed to connect to database");
 
-                info!("Database initialized successfully");
+                info!("[framework::setup] Database initialized successfully");
+
+                info!(
+                    "[framework::setup] Registering ({}) global commands",
+                    framework.options().commands.len()
+                );
 
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data {
-                    db: Arc::new(Mutex::new(conn)),
-                    tailscale_client: Arc::new(utils::tailscale::TailscaleClient::new()),
-                })
+
+                // Create broadcast channel for gRPC events
+                let (event_tx, _) =
+                    tokio::sync::broadcast::channel::<grpc::minecraft_bridge::ServerEvent>(100);
+                let event_tx = Arc::new(event_tx);
+
+                // Create the Data structure
+                let data = Arc::new(Data {
+                    db: pool,
+                    grpc_event_tx: Arc::clone(&event_tx),
+                });
+
+                // Clone context for gRPC server
+                let grpc_ctx = Arc::new(ctx.clone());
+                let grpc_data = Arc::clone(&data);
+                let grpc_port = utils::config::get_config().grpc_port;
+
+                // Spawn gRPC server in background
+                tokio::spawn(async move {
+                    let addr = format!("0.0.0.0:{}", grpc_port).parse().unwrap();
+                    if let Err(e) = grpc::start_grpc_server(grpc_ctx, grpc_data, addr).await {
+                        error!("[gRPC] Server error: {}", e);
+                    }
+                });
+
+                // Clone context for HTTP server
+                let http_data = Arc::clone(&data);
+                let http_port = utils::config::get_config().http_port;
+
+                // Spawn HTTP server in background
+                tokio::spawn(async move {
+                    if http_port.is_none() {
+                        info!(
+                            "[HTTP] Missing HTTP port configuration, skipping HTTP server startup"
+                        );
+                        return;
+                    }
+
+                    let addr = format!("0.0.0.0:{}", http_port.unwrap()).parse().unwrap();
+                    http::start_http_server(http_data, addr).await.unwrap();
+                });
+
+                Ok(Arc::try_unwrap(data).unwrap_or_else(|arc| (*arc).clone()))
             })
         })
         .options(options)
@@ -97,13 +172,30 @@ pub async fn start() {
         .framework(framework)
         .await;
 
+    info!("[start] Starting autosharded client");
     client.unwrap().start_autosharded().await.unwrap();
 }
 
 #[dotenvy::load(required = false)]
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    // Initialize logging with environment variable support
+    // Set RUST_LOG environment variable to control log levels
+    // Examples:
+    //   RUST_LOG=debug       - Show all debug and higher logs
+    //   RUST_LOG=twig=trace  - Show trace logs only for twig crate
+    //   RUST_LOG=info        - Show info and higher (default)
+    use tracing_subscriber::{EnvFilter, fmt};
+
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    fmt()
+        .with_env_filter(env_filter)
+        .with_target(true)
+        .with_thread_ids(false)
+        .with_line_number(false)
+        .with_file(false)
+        .init();
 
     start().await;
 }

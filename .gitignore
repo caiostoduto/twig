@@ -1,5 +1,5 @@
 # SQLite Database
-*.sqlite
+*.sqlite*
 
 # dotenv environment variable files
 .env

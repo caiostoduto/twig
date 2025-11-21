@@ -2,18 +2,21 @@ use std::env;
 use std::sync::OnceLock;
 
 use poise::serenity_prelude::UserId;
+use tracing::{debug, info};
 
+/// Application configuration loaded from environment variables
 #[derive(Debug)]
 pub struct Config {
     // Discord
     pub discord_token: String,
     pub discord_owners_ids: Vec<UserId>,
 
-    // Tailscale
-    pub tailscale_api_base: &'static str,
-    pub tailscale_client_id: Option<String>,
-    pub tailscale_client_secret: Option<String>,
-    pub tailscale_tag: Option<String>,
+    // Discord OAuth2
+    pub discord_oauth_client_id: Option<String>,
+    pub discord_oauth_client_secret: Option<String>,
+
+    // SQLite Database URL
+    pub database_url: String,
 
     // Git info (set at build time)
     pub commit_hash: &'static str,
@@ -30,15 +33,26 @@ pub struct Config {
     pub influxdb_org: Option<String>,
     pub influxdb_bucket: Option<String>,
     pub influxdb_token: Option<String>,
+
+    // gRPC
+    pub grpc_port: u16,
+
+    // HTTP Server
+    pub http_port: Option<u16>,
+    pub app_url: Option<String>,
 }
 
+/// Returns whether the application is running in debug mode
 pub fn is_debug() -> bool {
     cfg!(debug_assertions)
 }
 
 impl Config {
+    /// Loads configuration from environment variables
     fn from_env() -> Self {
-        Self {
+        info!("[from_env] Loading configuration from environment variables");
+
+        let config = Self {
             // Discord
             discord_token: env::var("DISCORD_TOKEN")
                 .expect("Environment variable `DISCORD_TOKEN` not set"),
@@ -52,21 +66,22 @@ impl Config {
                 })
                 .collect(),
 
-            // Tailscale
-            tailscale_api_base: "https://api.tailscale.com/api/v2",
-            tailscale_client_id: env::var("TAILSCALE_CLIENT_ID").ok(),
-            tailscale_client_secret: env::var("TAILSCALE_CLIENT_SECRET").ok(),
-            tailscale_tag: env::var("TAILSCALE_TAG").ok(),
+            // Discord OAuth2
+            discord_oauth_client_id: env::var("DISCORD_OAUTH_CLIENT_ID").ok(),
+            discord_oauth_client_secret: env::var("DISCORD_OAUTH_CLIENT_SECRET").ok(),
+
+            // SQLite Database URL
+            database_url: env::var("DATABASE_URL").unwrap_or("sqlite:twig.sqlite".into()),
 
             // Git info
             commit_hash: env!("VERGEN_GIT_SHA"),
             commit_branch: env!("VERGEN_GIT_BRANCH"),
 
             // Docker
-            docker_socket: match env::var("DOCKER_SOCKET").ok() {
-                Some(val) => Some(val.strip_prefix("unix://").unwrap_or(&val).to_string()),
-                _ => None,
-            },
+            // Strip the "unix://" prefix from DOCKER_SOCKET if present, as socket paths are typically just the filesystem path
+            docker_socket: env::var("DOCKER_SOCKET")
+                .ok()
+                .map(|val| val.strip_prefix("unix://").unwrap_or(&val).to_string()),
 
             // Runtime info
             start_time: std::time::Instant::now(),
@@ -76,13 +91,31 @@ impl Config {
             influxdb_org: env::var("INFLUXDB_ORG").ok(),
             influxdb_bucket: env::var("INFLUXDB_BUCKET").ok(),
             influxdb_token: env::var("INFLUXDB_TOKEN").ok(),
-        }
+
+            // gRPC
+            grpc_port: env::var("GRPC_PORT")
+                .ok()
+                .and_then(|p| p.parse().ok())
+                .unwrap_or(50051),
+
+            // HTTP Server
+            http_port: env::var("HTTP_PORT").ok().and_then(|p| p.parse().ok()),
+            app_url: env::var("APP_URL").ok(),
+        };
+
+        debug!("[from_env] Loaded configuration: {:?}", config);
+
+        config
     }
 }
 
 // A global, thread-safe, one-time initialized config
 pub static CONFIG: OnceLock<Config> = OnceLock::new();
 
+/// Returns a reference to the global configuration instance
+///
+/// This function initializes the configuration on first call and returns
+/// a cached reference on subsequent calls.
 pub fn get_config() -> &'static Config {
     CONFIG.get_or_init(Config::from_env)
 }
