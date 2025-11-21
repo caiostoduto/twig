@@ -20,7 +20,7 @@ async fn autocomplete_server(ctx: Context<'_>, partial: &str) -> Vec<String> {
         JOIN minecraft_proxies ON minecraft_servers.proxy_id = minecraft_proxies.id 
         WHERE
             minecraft_proxies.discord_guild_id = ?1 AND
-            minecraft_servers.discord_role_id IS NOT NULL AND
+            minecraft_servers.server_type IS NOT NULL AND
             minecraft_servers.server_name LIKE ?2",
     )
     .bind(guild_id as i64)
@@ -62,7 +62,7 @@ pub async fn unassign(
         JOIN minecraft_proxies ON minecraft_servers.proxy_id = minecraft_proxies.id
         WHERE
             minecraft_proxies.discord_guild_id = ?1 AND
-            minecraft_servers.discord_role_id IS NOT NULL AND
+            minecraft_servers.server_type IS NOT NULL AND
             minecraft_servers.server_name = ?2",
     )
     .bind(u64::from(ctx.guild_id().unwrap()) as i64)
@@ -85,7 +85,7 @@ pub async fn unassign(
 
     // Update server discord_role_id
     sqlx::query(
-        "UPDATE minecraft_servers SET discord_role_id = NULL
+        "UPDATE minecraft_servers SET server_type = NULL, discord_role_id = NULL
          WHERE id = ?1",
     )
     .bind(&server_id.to_string())

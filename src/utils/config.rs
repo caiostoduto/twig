@@ -11,6 +11,10 @@ pub struct Config {
     pub discord_token: String,
     pub discord_owners_ids: Vec<UserId>,
 
+    // Discord OAuth2
+    pub discord_oauth_client_id: Option<String>,
+    pub discord_oauth_client_secret: Option<String>,
+
     // SQLite Database URL
     pub database_url: String,
 
@@ -32,6 +36,10 @@ pub struct Config {
 
     // gRPC
     pub grpc_port: u16,
+
+    // HTTP Server
+    pub http_port: Option<u16>,
+    pub app_url: Option<String>,
 }
 
 /// Returns whether the application is running in debug mode
@@ -57,6 +65,10 @@ impl Config {
                         .expect("Each `DISCORD_OWNER_ID` must be a valid u64 user ID")
                 })
                 .collect(),
+
+            // Discord OAuth2
+            discord_oauth_client_id: env::var("DISCORD_OAUTH_CLIENT_ID").ok(),
+            discord_oauth_client_secret: env::var("DISCORD_OAUTH_CLIENT_SECRET").ok(),
 
             // SQLite Database URL
             database_url: env::var("DATABASE_URL").unwrap_or("sqlite:twig.sqlite".into()),
@@ -85,6 +97,10 @@ impl Config {
                 .ok()
                 .and_then(|p| p.parse().ok())
                 .unwrap_or(50051),
+
+            // HTTP Server
+            http_port: env::var("HTTP_PORT").ok().and_then(|p| p.parse().ok()),
+            app_url: env::var("APP_URL").ok(),
         };
 
         debug!("[from_env] Loaded configuration: {:?}", config);

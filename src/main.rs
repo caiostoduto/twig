@@ -5,6 +5,8 @@ use tracing::{debug, error, info};
 
 mod commands;
 mod events;
+mod grpc;
+mod http;
 mod utils;
 
 // Types used by all command functions
@@ -16,9 +18,8 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 pub struct Data {
     /// Shared database connection pool
     pub db: SqlitePool,
-    /// gRPC event broadcaster (optional, available after gRPC server starts)
-    pub grpc_event_tx:
-        Option<tokio::sync::broadcast::Sender<utils::grpc::minecraft_bridge::ServerEvent>>,
+    /// gRPC event broadcaster (shared across all instances)
+    pub grpc_event_tx: Arc<tokio::sync::broadcast::Sender<grpc::minecraft_bridge::ServerEvent>>,
 }
 
 /// Custom error handler for the bot framework
@@ -116,10 +117,15 @@ pub async fn start() {
 
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
 
+                // Create broadcast channel for gRPC events
+                let (event_tx, _) =
+                    tokio::sync::broadcast::channel::<grpc::minecraft_bridge::ServerEvent>(100);
+                let event_tx = Arc::new(event_tx);
+
                 // Create the Data structure
                 let data = Arc::new(Data {
                     db: pool,
-                    grpc_event_tx: None, // Will be set later when gRPC server starts
+                    grpc_event_tx: Arc::clone(&event_tx),
                 });
 
                 // Clone context for gRPC server
@@ -130,10 +136,26 @@ pub async fn start() {
                 // Spawn gRPC server in background
                 tokio::spawn(async move {
                     let addr = format!("0.0.0.0:{}", grpc_port).parse().unwrap();
-                    if let Err(e) = utils::grpc::start_grpc_server(grpc_ctx, grpc_data, addr).await
-                    {
+                    if let Err(e) = grpc::start_grpc_server(grpc_ctx, grpc_data, addr).await {
                         error!("[gRPC] Server error: {}", e);
                     }
+                });
+
+                // Clone context for HTTP server
+                let http_data = Arc::clone(&data);
+                let http_port = utils::config::get_config().http_port;
+
+                // Spawn HTTP server in background
+                tokio::spawn(async move {
+                    if http_port.is_none() {
+                        info!(
+                            "[HTTP] Missing HTTP port configuration, skipping HTTP server startup"
+                        );
+                        return;
+                    }
+
+                    let addr = format!("0.0.0.0:{}", http_port.unwrap()).parse().unwrap();
+                    http::start_http_server(http_data, addr).await.unwrap();
                 });
 
                 Ok(Arc::try_unwrap(data).unwrap_or_else(|arc| (*arc).clone()))

@@ -1,38 +1,27 @@
 -- SQLITE3
 
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY UNIQUE NOT NULL, -- Snowflake ID
-  minecraft_username TEXT UNIQUE -- Minecraft username (optional)
-);
-
-CREATE TABLE IF NOT EXISTS tailscale_machines (
-  node_id TEXT PRIMARY KEY UNIQUE NOT NULL, -- Tailscale Node ID (string)
-  user_id INTEGER, -- User ID (Snowflake ID)
-  ipv4_address TEXT NOT NULL UNIQUE, -- Tailscale IPv4 address
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS discord_users (
-  id INTEGER PRIMARY KEY UNIQUE NOT NULL, -- Discord User ID (Snowflake ID)
-  user_id INTEGER UNIQUE NOT NULL, -- User ID (Snowflake ID)
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  id INTEGER PRIMARY KEY UNIQUE NOT NULL -- Discord User ID (Snowflake ID)
+);
+
+CREATE TABLE IF NOT EXISTS minecraft_users (
+  id INTEGER PRIMARY KEY UNIQUE NOT NULL, -- Minecraft User ID (Snowflake ID)
+  discord_user_id INTEGER, -- User ID (Snowflake ID)
+  player_name TEXT NOT NULL, -- Minecraft username
+  player_ipv4 TEXT NOT NULL, -- Minecraft player IPv4 address
+  FOREIGN KEY (discord_user_id) REFERENCES discord_users(id) ON DELETE CASCADE,
+  UNIQUE(player_name, player_ipv4)
 );
 
 CREATE TABLE IF NOT EXISTS minecraft_registrations (
   id INTEGER PRIMARY KEY UNIQUE NOT NULL, -- Registration ID (Snowflake ID)
-  code INTEGER NOT NULL, -- Registration code (6-digit integer)
-  minecraft_username TEXT NOT NULL, -- Minecraft username
-  tailscale_machine_node_id TEXT NOT NULL -- Tailscale Machine Node ID
-);
-
-CREATE TABLE IF NOT EXISTS tailscale_tags (
-  id TEXT PRIMARY KEY UNIQUE NOT NULL -- Tailscale tag (string)
+  state_token TEXT NOT NULL UNIQUE, -- State token (UUID)
+  minecraft_user_id INTEGER NOT NULL UNIQUE, -- Minecraft User ID (Snowflake ID)
+  FOREIGN KEY (minecraft_user_id) REFERENCES minecraft_users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS discord_guilds (
-  id INTEGER PRIMARY KEY UNIQUE NOT NULL, -- Discord Guild ID (Snowflake ID)
-  tailscale_tag_id TEXT UNIQUE, -- Tailscale tag (string)
-  FOREIGN KEY (tailscale_tag_id) REFERENCES tailscale_tags(id) ON DELETE SET NULL
+  id INTEGER PRIMARY KEY UNIQUE NOT NULL -- Discord Guild ID (Snowflake ID)
 );
 
 CREATE TABLE IF NOT EXISTS minecraft_proxies (
@@ -45,14 +34,15 @@ CREATE TABLE IF NOT EXISTS minecraft_servers (
   id INTEGER PRIMARY KEY UNIQUE NOT NULL, -- Server ID (Snowflake ID)
   proxy_id TEXT NOT NULL, -- Proxy ID (UUID)
   server_name TEXT NOT NULL, -- Server name (string)
+  server_type INTEGER, -- Server type (enum as integer)
   discord_role_id INTEGER, -- Discord Role ID (Snowflake ID)
   FOREIGN KEY (proxy_id) REFERENCES minecraft_proxies(id) ON DELETE CASCADE
 );
 
--- Trigger to set proxy's discord_guild_id to NULL when all its servers have NULL discord_role_id
+-- Trigger to set proxy's discord_guild_id to NULL when all its servers have NULL server_type
 CREATE TRIGGER IF NOT EXISTS nullify_proxy_guild_on_server_update
-AFTER UPDATE OF discord_role_id ON minecraft_servers
-WHEN NEW.discord_role_id IS NULL
+AFTER UPDATE OF server_type ON minecraft_servers
+WHEN NEW.server_type IS NULL
 BEGIN
   UPDATE minecraft_proxies
   SET discord_guild_id = NULL
@@ -60,7 +50,7 @@ BEGIN
     AND NOT EXISTS (
       SELECT 1 FROM minecraft_servers
       WHERE proxy_id = NEW.proxy_id
-        AND discord_role_id IS NOT NULL
+        AND server_type IS NOT NULL
     );
 END;
 
