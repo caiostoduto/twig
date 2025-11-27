@@ -57,6 +57,15 @@ pub async fn oauth_callback(
         ));
     }
 
+    if config::get_config().discord_oauth_client_id.is_none()
+        || config::get_config().discord_oauth_client_secret.is_none()
+    {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Discord OAuth is not configured".to_string(),
+        ));
+    }
+
     let callback_url = Url::parse(config::get_config().app_url.as_deref().unwrap())
         .unwrap()
         .join("/discord/callback")

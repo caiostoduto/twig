@@ -133,30 +133,31 @@ pub async fn start() {
                 let grpc_data = Arc::clone(&data);
                 let grpc_port = utils::config::get_config().grpc_port;
 
-                // Spawn gRPC server in background
-                tokio::spawn(async move {
-                    let addr = format!("0.0.0.0:{}", grpc_port).parse().unwrap();
-                    if let Err(e) = grpc::start_grpc_server(grpc_ctx, grpc_data, addr).await {
-                        error!("[gRPC] Server error: {}", e);
-                    }
-                });
+                if grpc_port.is_some() {
+                    // Spawn gRPC server in background
+                    tokio::spawn(async move {
+                        let addr = format!("0.0.0.0:{}", grpc_port.unwrap()).parse().unwrap();
+                        if let Err(e) = grpc::start_grpc_server(grpc_ctx, grpc_data, addr).await {
+                            error!("[gRPC] Server error: {}", e);
+                        }
+                    });
+                } else {
+                    info!("[gRPC] Missing gRPC port configuration, skipping gRPC server startup");
+                }
 
                 // Clone context for HTTP server
                 let http_data = Arc::clone(&data);
                 let http_port = utils::config::get_config().http_port;
 
-                // Spawn HTTP server in background
-                tokio::spawn(async move {
-                    if http_port.is_none() {
-                        info!(
-                            "[HTTP] Missing HTTP port configuration, skipping HTTP server startup"
-                        );
-                        return;
-                    }
-
-                    let addr = format!("0.0.0.0:{}", http_port.unwrap()).parse().unwrap();
-                    http::start_http_server(http_data, addr).await.unwrap();
-                });
+                if http_port.is_some() {
+                    // Spawn HTTP server in background
+                    tokio::spawn(async move {
+                        let addr = format!("0.0.0.0:{}", http_port.unwrap()).parse().unwrap();
+                        http::start_http_server(http_data, addr).await.unwrap();
+                    });
+                } else {
+                    info!("[HTTP] Missing HTTP port configuration, skipping HTTP server startup");
+                }
 
                 Ok(Arc::try_unwrap(data).unwrap_or_else(|arc| (*arc).clone()))
             })

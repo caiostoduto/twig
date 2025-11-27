@@ -7,6 +7,9 @@ use tracing::{debug, info};
 /// Application configuration loaded from environment variables
 #[derive(Debug)]
 pub struct Config {
+    // Runtime info
+    pub start_time: std::time::Instant,
+
     // Discord
     pub discord_token: String,
     pub discord_owners_ids: Vec<UserId>,
@@ -25,9 +28,6 @@ pub struct Config {
     // Docker
     pub docker_socket: Option<String>,
 
-    // Runtime info
-    pub start_time: std::time::Instant,
-
     // InfluxDB
     pub influxdb_url: Option<String>,
     pub influxdb_org: Option<String>,
@@ -35,7 +35,7 @@ pub struct Config {
     pub influxdb_token: Option<String>,
 
     // gRPC
-    pub grpc_port: u16,
+    pub grpc_port: Option<u16>,
 
     // HTTP Server
     pub http_port: Option<u16>,
@@ -53,6 +53,9 @@ impl Config {
         info!("[from_env] Loading configuration from environment variables");
 
         let config = Self {
+            // Runtime info
+            start_time: std::time::Instant::now(),
+
             // Discord
             discord_token: env::var("DISCORD_TOKEN")
                 .expect("Environment variable `DISCORD_TOKEN` not set"),
@@ -83,9 +86,6 @@ impl Config {
                 .ok()
                 .map(|val| val.strip_prefix("unix://").unwrap_or(&val).to_string()),
 
-            // Runtime info
-            start_time: std::time::Instant::now(),
-
             // InfluxDB
             influxdb_url: env::var("INFLUXDB_URL").ok(),
             influxdb_org: env::var("INFLUXDB_ORG").ok(),
@@ -93,10 +93,7 @@ impl Config {
             influxdb_token: env::var("INFLUXDB_TOKEN").ok(),
 
             // gRPC
-            grpc_port: env::var("GRPC_PORT")
-                .ok()
-                .and_then(|p| p.parse().ok())
-                .unwrap_or(50051),
+            grpc_port: env::var("GRPC_PORT").ok().and_then(|p| p.parse().ok()),
 
             // HTTP Server
             http_port: env::var("HTTP_PORT").ok().and_then(|p| p.parse().ok()),
