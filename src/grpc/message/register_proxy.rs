@@ -84,6 +84,8 @@ pub async fn register_proxy(
             continue;
         }
 
+        i += 1;
+
         // Check if server already exists
         let existing = sqlx::query!(
             "SELECT id FROM minecraft_servers WHERE proxy_id = ?1 AND server_name = ?2",
@@ -104,8 +106,6 @@ pub async fn register_proxy(
             )
             .execute(&state.data.db)
             .await;
-
-            i += 1;
         }
     }
 
