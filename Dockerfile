@@ -4,7 +4,6 @@ WORKDIR /app
 # Planner stage - generates dependency recipe
 FROM chef AS planner
 COPY . .
-RUN ls
 RUN cargo chef prepare --recipe-path recipe.json
 
 # Builder stage - builds the application
@@ -15,14 +14,20 @@ COPY . .
 RUN cargo build --release --bin twig
 
 # Runtime stage - minimal image to run the application
-FROM debian:stable-slim AS runtime
+FROM rust:slim AS runtime
 WORKDIR /app
+
+# Install sqlx-cli dependencies and sqlx-cli
+RUN apt-get update && apt-get install -y ca-certificates libssl-dev pkg-config \
+  && cargo install sqlx-cli --no-default-features --features native-tls,sqlite \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /app/target/release/twig /usr/local/bin
 COPY migrations ./migrations
 
-# Set environment variables
 ENV DATABASE_URL=sqlite:/data/twig.sqlite
 ENV DOCKER_SOCKET=/var/run/docker.sock
 
 VOLUME [ "/data" ]
-ENTRYPOINT ["/usr/local/bin/twig"]
+ENTRYPOINT ["/bin/sh", "-c", "sqlx db create && sqlx migrate run && /usr/local/bin/twig"]
