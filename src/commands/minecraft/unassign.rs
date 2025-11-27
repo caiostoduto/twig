@@ -71,7 +71,7 @@ pub async fn unassign(
     .await?;
 
     if server_result.is_none() {
-        let embed = embed::get_embed_template(embed::EmbedStatus::Error)
+        let embed = embed::warn()
             .title("<:minecraft:1435794853517721722>  /minecraft unassign server")
             .description("The specified server does not exist at this guild.");
 
@@ -92,7 +92,7 @@ pub async fn unassign(
     .execute(&ctx.data().db)
     .await?;
 
-    let embed = embed::get_embed_template(embed::EmbedStatus::Success)
+    let embed = embed::success()
         .title("<:minecraft:1435794853517721722>  Minecraft unassign server")
         .description("Role successfully unassigned from the specified server.");
 

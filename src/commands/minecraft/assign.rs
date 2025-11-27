@@ -65,7 +65,7 @@ pub async fn assign(
 
     // Check if role is @everyone
     if role.is_some() && role.as_ref().unwrap().id.get() == guild_id {
-        let embed = embed::get_embed_template(embed::EmbedStatus::Error)
+        let embed = embed::warn()
             .title("<:minecraft:1435794853517721722>  Minecraft assign server")
             .description("You cannot assign the @everyone role.");
 
@@ -89,7 +89,7 @@ pub async fn assign(
     .fetch_optional(&ctx.data().db)
     .await?
     .map(|record| (record.id, record.proxy_id)) else {
-        let embed = embed::get_embed_template(embed::EmbedStatus::Error)
+        let embed = embed::warn()
             .title("<:minecraft:1435794853517721722>  /minecraft assign server")
             .description("The specified server doesn't exist or isn't available at this guild.");
 
@@ -135,7 +135,7 @@ pub async fn assign(
         .execute(&ctx.data().db)
         .await?;
 
-        let embed = embed::get_embed_template(embed::EmbedStatus::Success)
+        let embed = embed::success()
             .title("<:minecraft:1435794853517721722>  Minecraft assign server")
             .description("Role successfully assigned to the specified server.");
 
@@ -156,7 +156,7 @@ pub async fn assign(
         .execute(&ctx.data().db)
         .await?;
 
-        let embed = embed::get_embed_template(embed::EmbedStatus::Success)
+        let embed = embed::success()
             .title("<:minecraft:1435794853517721722>  Minecraft assign server")
             .description("Guild successfully assigned to the specified server.");
 

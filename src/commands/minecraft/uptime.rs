@@ -59,7 +59,7 @@ async fn embed_message() -> CreateEmbed {
     fields.sort_by_key(|f| f.0.clone());
 
     // Create embed response
-    return embed::get_embed_template(embed::EmbedStatus::Success)
+    return embed::success()
         .title("📊  Minecraft Status (6h)")
         .fields(fields);
 }

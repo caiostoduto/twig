@@ -11,16 +11,14 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
         tokio::join!(get_discord_latency(&ctx), get_gateway_ping(&ctx));
 
     // Create embed response
-    let embed = embed::get_embed_template(embed::EmbedStatus::Success)
-        .title("🏓  Pong!")
-        .fields(vec![
-            ("⛩️ Gateway", &format!("{:.2}ms", gateway_ping), true),
-            (
-                "<:discord:1431369538766897334> Discord (defer)",
-                &format!("{:.2}ms", discord_latency),
-                true,
-            ),
-        ]);
+    let embed = embed::success().title("🏓  Pong!").fields(vec![
+        ("⛩️ Gateway", &format!("{:.2}ms", gateway_ping), true),
+        (
+            "<:discord:1431369538766897334> Discord (defer)",
+            &format!("{:.2}ms", discord_latency),
+            true,
+        ),
+    ]);
 
     // Send the response
     ctx.send(CreateReply::default().embed(embed).ephemeral(true))
