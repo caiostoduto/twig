@@ -1,15 +1,19 @@
+mod assign;
+mod unassign;
 mod uptime;
 
 use crate::{Context, Data, Error};
 
+use assign::*;
+use unassign::*;
 use uptime::*;
 
 /// Minecraft command group
 #[poise::command(
     slash_command,
-    subcommands("uptime"),
-    subcommand_required = true,
-    category = "Minecraft"
+    category = "Minecraft",
+    subcommands("uptime", "assign", "unassign"),
+    subcommand_required = true
 )]
 pub async fn minecraft(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())

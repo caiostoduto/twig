@@ -4,4 +4,5 @@ pub mod db;
 pub mod docker;
 pub mod embed;
 pub mod influxdb;
-pub mod tailscale;
+pub mod minecraft;
+pub mod snowflake;

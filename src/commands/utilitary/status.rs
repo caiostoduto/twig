@@ -4,8 +4,13 @@ use crate::{
 };
 
 use poise::CreateReply;
-use std::time::Duration;
 use sysinfo::System;
+
+/// Time constants for uptime formatting
+const SECS_PER_WEEK: u64 = 604800;
+const SECS_PER_DAY: u64 = 86400;
+const SECS_PER_HOUR: u64 = 3600;
+const SECS_PER_MINUTE: u64 = 60;
 
 /// Display the bot's current status
 #[poise::command(slash_command, category = "Utilitary")]
@@ -13,11 +18,7 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
 
     // Gather statuses concurrently
-    let (docker_status, shard_info, tailscale_status) = tokio::join!(
-        get_docker_status(),
-        get_shard_info(&ctx),
-        get_tailscale_status()
-    );
+    let (docker_status, shard_info) = tokio::join!(get_docker_status(), get_shard_info(&ctx));
 
     // Initialize system and refresh CPU/Memory
     let mut sys = System::new();
@@ -47,14 +48,7 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
             ),
             (
                 "🕒 Uptime",
-                &format!(
-                    "{}w {}d {}h {}m {}s",
-                    config::get_config().start_time.elapsed().as_secs() / 604800,
-                    (config::get_config().start_time.elapsed().as_secs() % 604800) / 86400,
-                    (config::get_config().start_time.elapsed().as_secs() % 86400) / 3600,
-                    (config::get_config().start_time.elapsed().as_secs() % 3600) / 60,
-                    config::get_config().start_time.elapsed().as_secs() % 60
-                ),
+                &format_uptime(config::get_config().start_time.elapsed().as_secs()),
                 true,
             ),
             ("⏱️ CPU Usage", &format!("{:.2}%", cpu_usage), true),
@@ -69,11 +63,6 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
             ),
             ("\u{200b}", &"\u{200b}".to_string(), true),
             ("<:docker:1431626218800808026> Docker", &docker_status, true),
-            (
-                "<:tailscale:1431362623194267809> Tailscale",
-                &tailscale_status,
-                true,
-            ),
             ("\u{200b}", &"\u{200b}".to_string(), true),
         ]);
 
@@ -84,48 +73,36 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Check Tailscale status
-async fn get_tailscale_status() -> String {
-    // Try to reach the Tailscale local IP
-    match reqwest::Client::builder()
-        .timeout(Duration::from_millis(200))
-        .build()
-        .unwrap()
-        .get("http://100.100.100.100")
-        .send()
-        .await
-    {
-        Ok(response) => {
-            if response.status().is_success() {
-                "Running".to_string()
-            } else {
-                "Not running".to_string()
-            }
-        }
-        Err(_) => "Not running".to_string(),
-    }
+/// Formats uptime in seconds to a human-readable string
+///
+/// # Arguments
+/// * `total_secs` - Total uptime in seconds
+///
+/// # Returns
+/// A formatted string in the format "Xw Xd Xh Xm Xs"
+fn format_uptime(total_secs: u64) -> String {
+    let weeks = total_secs / SECS_PER_WEEK;
+    let days = (total_secs % SECS_PER_WEEK) / SECS_PER_DAY;
+    let hours = (total_secs % SECS_PER_DAY) / SECS_PER_HOUR;
+    let minutes = (total_secs % SECS_PER_HOUR) / SECS_PER_MINUTE;
+    let seconds = total_secs % SECS_PER_MINUTE;
+
+    format!("{}w {}d {}h {}m {}s", weeks, days, hours, minutes, seconds)
 }
 
+/// Check Docker status
 async fn get_docker_status() -> String {
     // Check if Docker socket is configured
-    if config::get_config().docker_socket.is_some() {
-        // Create a client to connect to the Docker socket
-        let client = docker::DockerClient::new();
-
-        match client.ping().await {
-            Ok(response) => {
-                if response.status().is_success() {
-                    return "Running".to_string();
-                } else {
-                    return "Not running".to_string();
-                }
-            }
-            Err(_) => {
-                return "Not running".to_string();
-            }
-        }
-    } else {
+    let Some(_) = config::get_config().docker_socket.as_ref() else {
         return "Not configured".to_string();
+    };
+
+    // Create a client to connect to the Docker socket
+    let client = docker::DockerClient::new();
+
+    match client.ping().await {
+        Ok(response) if response.status().is_success() => "Running".to_string(),
+        _ => "Not running".to_string(),
     }
 }
 

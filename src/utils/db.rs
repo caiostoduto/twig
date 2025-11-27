@@ -1,15 +1,12 @@
-use rusqlite::{Connection, Result};
-use std::fs;
+use sqlx::SqlitePool;
+use tracing::info;
 
-pub fn connect() -> Result<Connection> {
-    let conn = Connection::open("twig.sqlite")?;
-    Ok(conn)
-}
+use crate::utils::config;
 
-pub fn initialize_db(conn: &Connection) -> Result<()> {
-    let schema =
-        fs::read_to_string("migrations/initial_migration.sql").expect("Failed to read schema file");
+/// Opens a connection to the SQLite database
+pub async fn connect() -> Result<sqlx::Pool<sqlx::Sqlite>, sqlx::Error> {
+    let pool = SqlitePool::connect(&config::get_config().database_url).await;
+    info!("[connect] Connected to the database successfully.");
 
-    conn.execute_batch(&schema)?;
-    Ok(())
+    pool
 }
