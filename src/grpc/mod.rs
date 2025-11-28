@@ -52,7 +52,7 @@ impl MinecraftBridge for MinecraftBridgeService {
         &self,
         request: Request<ProxyRegistration>,
     ) -> Result<Response<RegistrationResponse>, Status> {
-        message::register_proxy::register_proxy(&self.state, request).await
+        message::minecraft_bridge::register_proxy(&self.state, request).await
     }
 
     /// Check if a player is allowed to join a specific server
@@ -60,7 +60,7 @@ impl MinecraftBridge for MinecraftBridgeService {
         &self,
         request: Request<PlayerAccessRequest>,
     ) -> Result<Response<PlayerAccessResponse>, Status> {
-        message::check_player_access::check_player_access(&self.state, request).await
+        message::minecraft_bridge::check_player_access(&self.state, request).await
     }
 
     /// Subscribe to server events (server-streaming)

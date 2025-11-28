@@ -36,9 +36,9 @@ message PlayerAccessRequest {
 }
 
 message PlayerAccessResponse {
-  AccessStatus status = 1;       // Access status
+  AccessStatus status = 1;                // Access status
   optional string authentication_url = 2; // [Optional] Authentication URL
-  optional uint32 expires_in = 3;          // [Optional] URL expiration time in seconds
+  optional uint32 expires_in = 3;         // [Optional] URL expiration time in seconds
 }
 
 enum AccessStatus {
