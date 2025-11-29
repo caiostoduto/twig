@@ -3,7 +3,7 @@ use std::sync::Arc;
 use poise::serenity_prelude as serenity;
 use tracing::info;
 
-use crate::{Data, Error};
+use crate::{Data, Error, grpc::stream::minecraft_bridge};
 
 pub async fn handle(
     _ctx: &serenity::Context,
@@ -37,7 +37,7 @@ pub async fn handle(
         for record in records {
             let (player_name, player_ipv4) = (record.player_name, record.player_ipv4);
 
-            crate::grpc::stream::disconnect::guild_member_removal(
+            minecraft_bridge::disconnect::guild_member_removal(
                 Arc::new(data.clone()),
                 player_name,
                 player_ipv4,

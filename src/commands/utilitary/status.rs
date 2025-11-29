@@ -33,38 +33,36 @@ pub async fn status(ctx: Context<'_>) -> Result<(), Error> {
     };
 
     // Create embed response
-    let embed = embed::get_embed_template(embed::EmbedStatus::Success)
-        .title("📊  Status")
-        .fields(vec![
-            (
-                "#️⃣ Shard Info",
-                &format!("{}/{}", shard_info.shard_id, shard_info.shard_count),
-                true,
+    let embed = embed::success().title("📊  Status").fields(vec![
+        (
+            "#️⃣ Shard Info",
+            &format!("{}/{}", shard_info.shard_id, shard_info.shard_count),
+            true,
+        ),
+        (
+            "🐕‍🦺 Guilds",
+            &format!("{}", ctx.cache().guilds().len()),
+            true,
+        ),
+        (
+            "🕒 Uptime",
+            &format_uptime(config::get_config().start_time.elapsed().as_secs()),
+            true,
+        ),
+        ("⏱️ CPU Usage", &format!("{:.2}%", cpu_usage), true),
+        (
+            "📈 Memory Usage",
+            &format!(
+                "{:.2}/{:.2}GB",
+                sys.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0,
+                sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0
             ),
-            (
-                "🐕‍🦺 Guilds",
-                &format!("{}", ctx.cache().guilds().len()),
-                true,
-            ),
-            (
-                "🕒 Uptime",
-                &format_uptime(config::get_config().start_time.elapsed().as_secs()),
-                true,
-            ),
-            ("⏱️ CPU Usage", &format!("{:.2}%", cpu_usage), true),
-            (
-                "📈 Memory Usage",
-                &format!(
-                    "{:.2}/{:.2}GB",
-                    sys.used_memory() as f64 / 1024.0 / 1024.0 / 1024.0,
-                    sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0
-                ),
-                true,
-            ),
-            ("\u{200b}", &"\u{200b}".to_string(), true),
-            ("<:docker:1431626218800808026> Docker", &docker_status, true),
-            ("\u{200b}", &"\u{200b}".to_string(), true),
-        ]);
+            true,
+        ),
+        ("\u{200b}", &"\u{200b}".to_string(), true),
+        ("<:docker:1431626218800808026> Docker", &docker_status, true),
+        ("\u{200b}", &"\u{200b}".to_string(), true),
+    ]);
 
     // Send the response
     ctx.send(CreateReply::default().embed(embed).ephemeral(true))

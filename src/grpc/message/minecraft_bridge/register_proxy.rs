@@ -49,31 +49,26 @@ pub async fn register_proxy(
     let server_names: Vec<String> = servers.iter().map(|s| s.name.clone()).collect();
 
     // Delete servers for this proxy that are not in the registration list
-    if !server_names.is_empty() {
-        let placeholders = server_names
-            .iter()
-            .map(|_| "?")
-            .collect::<Vec<_>>()
-            .join(",");
-        let query = format!(
-            "DELETE FROM minecraft_servers WHERE proxy_id = ? AND server_name NOT IN ({})",
-            placeholders
-        );
+    // First, get all existing servers for this proxy
+    let existing_servers = sqlx::query!(
+        "SELECT server_name FROM minecraft_servers WHERE proxy_id = ?1",
+        proxy_id
+    )
+    .fetch_all(&state.data.db)
+    .await
+    .unwrap_or_default();
 
-        let mut query_builder = sqlx::query(&query).bind(&proxy_id);
-        for name in &server_names {
-            query_builder = query_builder.bind(name);
+    // Delete servers that are not in the new registration list
+    for existing in existing_servers {
+        if !server_names.contains(&existing.server_name) {
+            let _ = sqlx::query!(
+                "DELETE FROM minecraft_servers WHERE proxy_id = ?1 AND server_name = ?2",
+                proxy_id,
+                existing.server_name
+            )
+            .execute(&state.data.db)
+            .await;
         }
-
-        let _ = query_builder.execute(&state.data.db).await;
-    } else {
-        // If no servers provided, delete all servers for this proxy
-        let _ = sqlx::query!(
-            "DELETE FROM minecraft_servers WHERE proxy_id = ?1",
-            proxy_id
-        )
-        .execute(&state.data.db)
-        .await;
     }
 
     let mut i = 0;
@@ -88,6 +83,8 @@ pub async fn register_proxy(
 
             continue;
         }
+
+        i += 1;
 
         // Check if server already exists
         let existing = sqlx::query!(
@@ -109,8 +106,6 @@ pub async fn register_proxy(
             )
             .execute(&state.data.db)
             .await;
-
-            i += 1;
         }
     }
 

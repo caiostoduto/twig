@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{Data, Error};
+use crate::{Data, Error, grpc::stream::minecraft_bridge};
 use poise::serenity_prelude::{self as serenity};
 use tracing::info;
 
@@ -38,7 +38,7 @@ pub async fn handle(
                 );
 
                 // Send PlayerDisconnect event to Minecraft server via gRPC
-                crate::grpc::stream::disconnect::guild_member_removal(
+                minecraft_bridge::disconnect::guild_member_removal(
                     Arc::new(data.clone()),
                     player_name,
                     player_ipv4,

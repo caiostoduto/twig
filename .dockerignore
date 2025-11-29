@@ -5,6 +5,7 @@
 
 ## Source code
 !src
+!proto
 
 ## Cargo files
 !build.rs

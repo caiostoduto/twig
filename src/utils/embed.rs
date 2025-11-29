@@ -2,10 +2,24 @@ use crate::utils::config;
 
 use poise::serenity_prelude::{Color, CreateEmbed, CreateEmbedFooter, Timestamp};
 
+/// Creates a success embed template
+/// # Returns
+/// A `CreateEmbed` with success indicators
+pub fn success() -> CreateEmbed {
+    create_embed_template(EmbedStatus::Success)
+}
+
+/// Creates an error embed template
+/// # Returns
+/// A `CreateEmbed` with error indicators
+pub fn warn() -> CreateEmbed {
+    create_embed_template(EmbedStatus::Warn)
+}
+
 /// Embed status type for visual indicators
-pub enum EmbedStatus {
+enum EmbedStatus {
     Success,
-    Error,
+    Warn,
 }
 
 /// Creates a standardized embed template with branding and status indicator
@@ -15,10 +29,10 @@ pub enum EmbedStatus {
 ///
 /// # Returns
 /// A `CreateEmbed` with the bot's color scheme, footer, and timestamp
-pub fn get_embed_template(status: EmbedStatus) -> CreateEmbed {
+fn create_embed_template(status: EmbedStatus) -> CreateEmbed {
     let status_emoji = match status {
         EmbedStatus::Success => "✅",
-        EmbedStatus::Error => "⚠️",
+        EmbedStatus::Warn => "⚠️",
     };
 
     CreateEmbed::new()

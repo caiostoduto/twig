@@ -4,7 +4,7 @@ use reqwest::Url;
 use serde::Deserialize;
 use tracing::warn;
 
-use crate::grpc::stream::authenticated;
+use crate::grpc::stream::minecraft_bridge;
 use crate::utils::config;
 use crate::utils::snowflake::is_snowflake_recent;
 
@@ -54,6 +54,15 @@ pub async fn oauth_callback(
         return Err((
             StatusCode::BAD_REQUEST,
             "Registration token expired".to_string(),
+        ));
+    }
+
+    if config::get_config().discord_oauth_client_id.is_none()
+        || config::get_config().discord_oauth_client_secret.is_none()
+    {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Discord OAuth is not configured".to_string(),
         ));
     }
 
@@ -146,7 +155,7 @@ pub async fn oauth_callback(
     .execute(&app_state.data.db)
     .await.unwrap();
 
-    authenticated::broadcast_event(app_state.data, minecraft_user_id).await;
+    minecraft_bridge::authenticated::broadcast_event(app_state.data, minecraft_user_id).await;
 
     Ok("Sucesso!".to_string())
 }
