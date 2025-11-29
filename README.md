@@ -9,6 +9,8 @@
 
 Twig is a Rust-powered Discord bot that keeps community management and Minecraft infrastructure in sync. It exposes Discord slash commands, a gRPC service for Minecraft proxies (Velocity, Waterfall, etc.), and a lightweight OAuth + HTTP callback layer so players can link accounts securely. The project favors reliability: SQLx migrations, Tokio-based concurrency, tracing-first logging, and optional integrations with Docker and InfluxDB for runtime insights.
 
+Works in conjunction with the **[Twig Velocity plugin](https://github.com/caiostoduto/twig-velocity)** to provide seamless Discord-based authentication and role-based access control for Minecraft servers running behind a Velocity proxy.
+
 ## Table of contents
 - [Highlights](#highlights)
 - [Architecture at a glance](#architecture-at-a-glance)
@@ -138,3 +140,11 @@ Contributions are welcome—open an issue or PR describing the problem you are s
 ## License
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
+
+---
+
+**Related projects:**
+- **[Twig Velocity](https://github.com/caiostoduto/twig-velocity)** - Minecraft Velocity proxy plugin that bridges to this Discord bot via gRPC for secure player authentication and server access control
+- [Velocity](https://papermc.io/software/velocity) - Modern Minecraft proxy server
+
+**Contributing:** Issues and pull requests welcome! Please open an issue or PR describing the problem you are solving, and feel free to propose additional slash commands or event types.
