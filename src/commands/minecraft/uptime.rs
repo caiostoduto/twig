@@ -106,6 +106,12 @@ async fn get_minecraft_servers_uptime() -> HashMap<String, MinecraftUptime> {
             .push(uptime[4].parse::<f64>().unwrap());
     }
 
+    // Calculate mean uptime for each server
+    for (_host, uptime) in uptimes.iter_mut() {
+        let sum: f64 = uptime.values.iter().sum();
+        uptime.mean = sum / (uptime.values.len() as f64);
+    }
+
     // Get current real-time status (last 1 minute)
     for uptime in client
         .query(format!(
@@ -133,11 +139,6 @@ async fn get_minecraft_servers_uptime() -> HashMap<String, MinecraftUptime> {
             })
             .values
             .push(uptime[3].parse::<f64>().unwrap());
-    }
-
-    for (_host, uptime) in uptimes.iter_mut() {
-        let sum: f64 = uptime.values.iter().sum();
-        uptime.mean = sum / (uptime.values.len() as f64);
     }
 
     uptimes
