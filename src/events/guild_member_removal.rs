@@ -45,10 +45,6 @@ pub async fn handle(
                 )
                 .await;
             }
-
-            sqlx::query!("DELETE FROM discord_users WHERE id = $1", user_id)
-                .execute(&data.db)
-                .await?;
         }
         _ => {
             info!(
