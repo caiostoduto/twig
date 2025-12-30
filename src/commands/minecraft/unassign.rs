@@ -1,50 +1,10 @@
 use poise::CreateReply;
-use tracing::info;
 
 use crate::{
     Context, Error,
+    commands::minecraft::autocomplete_assigned_server,
     utils::{checks, embed},
 };
-
-async fn autocomplete_server(ctx: Context<'_>, partial: &str) -> Vec<String> {
-    let mut server_ids = Vec::new();
-
-    let guild_id_i64 = match ctx.guild_id() {
-        Some(id) => u64::from(id),
-        None => return server_ids,
-    } as i64;
-
-    let pattern = format!("%{}%", partial);
-    match sqlx::query!(
-        "SELECT minecraft_servers.server_name 
-        FROM minecraft_servers 
-        JOIN minecraft_proxies ON minecraft_servers.proxy_id = minecraft_proxies.id 
-        WHERE
-            minecraft_proxies.discord_guild_id = ?1 AND
-            minecraft_servers.server_type IS NOT NULL AND
-            minecraft_servers.server_name LIKE ?2",
-        guild_id_i64,
-        pattern
-    )
-    .fetch_all(&ctx.data().db)
-    .await
-    {
-        Ok(rows) => {
-            for row in rows {
-                server_ids.push(row.server_name);
-            }
-        }
-        Err(_) => {}
-    }
-
-    info!(
-        "[autocomplete_server] ({}): {:?}",
-        server_ids.len(),
-        server_ids
-    );
-
-    server_ids
-}
 
 /// Unassign a Discord role from a Minecraft server
 #[poise::command(slash_command, guild_only = true, check = "checks::is_owner")]
@@ -52,7 +12,7 @@ pub async fn unassign(
     ctx: Context<'_>,
 
     #[description = "Server to unassign the role from"]
-    #[autocomplete = "autocomplete_server"]
+    #[autocomplete = "autocomplete_assigned_server"]
     server: String,
 ) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;

@@ -4,49 +4,9 @@ use tracing::info;
 use crate::utils::minecraft::MinecraftServerType;
 use crate::{
     Context, Error,
+    commands::minecraft::autocomplete_unassigned_server,
     utils::{checks, embed},
 };
-
-async fn autocomplete_server(ctx: Context<'_>, partial: &str) -> Vec<String> {
-    let mut server_ids = Vec::new();
-
-    let guild_id = match ctx.guild_id() {
-        Some(id) => u64::from(id),
-        None => return server_ids,
-    };
-
-    let guild_id_i64 = guild_id as i64;
-    let pattern = format!("%{}%", partial);
-
-    match sqlx::query!(
-        "SELECT minecraft_servers.server_name 
-        FROM minecraft_servers 
-        JOIN minecraft_proxies ON minecraft_servers.proxy_id = minecraft_proxies.id 
-        WHERE
-            (minecraft_proxies.discord_guild_id = ?1 OR minecraft_proxies.discord_guild_id IS NULL) AND
-            minecraft_servers.server_name LIKE ?2",
-        guild_id_i64,
-        pattern
-    )
-    .fetch_all(&ctx.data().db)
-    .await
-    {
-        Ok(rows) => {
-            for row in rows {
-                server_ids.push(row.server_name);
-            }
-        }
-        Err(_) => {}
-    }
-
-    info!(
-        "[autocomplete_server] ({}): {:?}",
-        server_ids.len(),
-        server_ids
-    );
-
-    server_ids
-}
 
 /// Assign a Discord role to a Minecraft server
 #[poise::command(slash_command, guild_only = true, check = "checks::is_owner")]
@@ -54,7 +14,7 @@ pub async fn assign(
     ctx: Context<'_>,
 
     #[description = "Server to assign the role to"]
-    #[autocomplete = "autocomplete_server"]
+    #[autocomplete = "autocomplete_unassigned_server"]
     server: String,
 
     #[description = "Role to assign to the server"] role: Option<Role>,
